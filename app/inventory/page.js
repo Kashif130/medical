@@ -132,6 +132,7 @@ export default function InventoryPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-clinic-line text-left text-xs uppercase text-gray-500 font-mono">
+              <th className="w-2 py-3 pl-3"></th>
               <th className="px-5 py-3">Medicine</th>
               <th className="px-3 py-3">Batch</th>
               <th className="px-3 py-3">Stock</th>
@@ -146,8 +147,11 @@ export default function InventoryPage() {
               const status = expiryStatus(m.expiryDate);
               const low = (m.stock ?? 0) <= (m.reorderLevel ?? 10);
               return (
-                <tr key={m.id} className={`strip strip-${status}`}>
-                  <td className="px-5 py-3 pl-6">
+                <tr key={m.id}>
+                  <td className="pl-3 py-3 w-2">
+                    <div style={{width:'4px', borderRadius:'4px', height:'36px', background: status==='safe'?'#1E8E5A':status==='warning'?'#B6741A':status==='expired'?'#B3261E':'#DCE6E2'}}></div>
+                  </td>
+                  <td className="px-5 py-3">
                     <p className="font-medium">{m.name}</p>
                     <p className="text-xs text-gray-500">{m.category}</p>
                   </td>
@@ -175,7 +179,7 @@ export default function InventoryPage() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-gray-400 text-sm">
+                <td colSpan={8} className="px-5 py-10 text-center text-gray-400 text-sm">
                   Koi medicine nahi mili. "Add medicine" se naya item shamil karein.
                 </td>
               </tr>
