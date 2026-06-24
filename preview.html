@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Umer Din Medical Store — Preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F8F7; --panel: #FFFFFF; --ink: #10211C;
+    --teal: #0E6E5C; --tealDark: #0A4F42; --line: #DCE6E2;
+    --amber: #B6741A; --red: #B3261E; --green: #1E8E5A;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Inter',sans-serif; background:var(--bg); color:var(--ink); }
+  .display { font-family:'IBM Plex Sans',sans-serif; }
+  .mono { font-family:'IBM Plex Mono',monospace; }
+  .app { display:flex; min-height:100vh; }
+
+  .sidebar { width:230px; background:var(--tealDark); color:#fff; display:flex; flex-direction:column; flex-shrink:0; }
+  .brand { display:flex; align-items:center; gap:8px; padding:20px; border-bottom:1px solid rgba(255,255,255,0.1); }
+  .brand-dot { width:20px;height:20px;border-radius:6px;background:#34d399; display:flex;align-items:center;justify-content:center;font-size:12px;}
+  .brand p { margin:0; font-weight:600; font-size:14px; }
+  .brand span { font-size:11px; color:rgba(167,243,208,0.7); font-family:'IBM Plex Mono',monospace; }
+  .nav { flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:4px; }
+  .nav button { all:unset; cursor:pointer; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; font-size:14px; font-weight:500; color:rgba(209,250,229,0.8); }
+  .nav button:hover { background:rgba(255,255,255,0.06); color:#fff; }
+  .nav button.active { background:rgba(255,255,255,0.12); color:#fff; }
+  .nav button.admin-only { display:none; }
+  .role-admin .nav button.admin-only { display:flex; }
+  .sidebar-footer { padding:14px 16px; border-top:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:space-between; }
+  .sidebar-footer .who p { margin:0; font-size:13px; font-weight:500; }
+  .sidebar-footer .who span { font-size:11px; font-family:'IBM Plex Mono',monospace; color:rgba(167,243,208,0.6); text-transform:uppercase; }
+
+  .role-switcher { padding:10px 16px; border-top:1px solid rgba(255,255,255,0.1); }
+  .role-switcher p { margin:0 0 6px; font-size:10px; text-transform:uppercase; color:rgba(167,243,208,0.5); font-family:'IBM Plex Mono',monospace; }
+  .role-switcher .toggle { display:flex; background:rgba(255,255,255,0.08); border-radius:8px; padding:3px; }
+  .role-switcher .toggle button { all:unset; flex:1; text-align:center; cursor:pointer; font-size:12px; padding:6px 0; border-radius:6px; color:rgba(209,250,229,0.7); }
+  .role-switcher .toggle button.active { background:#fff; color:var(--tealDark); font-weight:600; }
+
+  .main { flex:1; padding:32px; max-width:1100px; }
+  h1 { font-family:'IBM Plex Sans',sans-serif; font-size:20px; font-weight:600; margin:0; }
+  .subtitle { color:#6b7a74; font-size:13px; margin:4px 0 0; }
+  .header-row { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:24px; }
+
+  .btn { all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:6px; background:var(--teal); color:#fff; font-size:13px; font-weight:500; padding:10px 16px; border-radius:10px; }
+  .btn:hover { background:var(--tealDark); }
+  .btn-outline { all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--teal); color:var(--teal); font-size:12px; font-weight:500; padding:6px 12px; border-radius:10px; }
+  .btn-outline:hover { background:var(--teal); color:#fff; }
+
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; }
+  .stat { display:flex; align-items:flex-start; justify-content:space-between; }
+  .stat .label { font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; color:#6b7a74; }
+  .stat .value { font-family:'IBM Plex Sans',sans-serif; font-size:24px; font-weight:600; margin-top:4px; }
+  .stat .value.profit { color: var(--teal); }
+  .icon-pill { padding:8px; border-radius:10px; }
+  .pill-teal { background:#e6f4ec; color:var(--teal); }
+  .pill-amber { background:#fbeedd; color:var(--amber); }
+  .pill-red { background:#fbe9e7; color:var(--red); }
+
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+  .panel-head { padding:14px 18px; border-bottom:1px solid var(--line); font-weight:600; font-size:13px; font-family:'IBM Plex Sans',sans-serif; }
+  .row { display:flex; align-items:center; justify-content:space-between; padding:12px 18px; border-bottom:1px solid var(--line); position:relative; }
+  .row:last-child { border-bottom:none; }
+  .row.strip { padding-left:24px; }
+  .row.strip::before { content:""; position:absolute; left:0; top:6px; bottom:6px; width:4px; border-radius:4px; }
+  .strip-safe::before { background:var(--green); }
+  .strip-warning::before { background:var(--amber); }
+  .strip-expired::before { background:var(--red); }
+  .row .name { font-size:13px; font-weight:500; margin:0; }
+  .row .sub { font-size:11px; color:#6b7a74; margin:2px 0 0; font-family:'IBM Plex Mono',monospace; }
+  .badge { font-family:'IBM Plex Mono',monospace; font-size:11px; padding:3px 9px; border-radius:999px; }
+  .badge-safe { background:#e6f4ec; color:var(--green); }
+  .badge-warning { background:#fbeedd; color:var(--amber); }
+  .badge-expired { background:#fbe9e7; color:var(--red); }
+  .badge-unknown { background:#eef2f0; color:#5c6b65; }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  thead th { text-align:left; font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; color:#6b7a74; padding:10px 18px; border-bottom:1px solid var(--line); }
+  tbody td { padding:10px 18px; border-bottom:1px solid var(--line); }
+  tbody tr:last-child td { border-bottom:none; }
+
+  .search-wrap { position:relative; max-width:380px; margin-bottom:16px; }
+  .search-wrap input { width:100%; padding:10px 14px 10px 34px; border:1px solid var(--line); border-radius:10px; font-size:13px; background:#fff; }
+  .search-wrap .ic { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:#9ca8a2; }
+
+  .billing-grid { display:grid; grid-template-columns:2fr 1fr; gap:24px; }
+  .cart-item { display:flex; align-items:center; justify-content:space-between; padding:12px 18px; border-bottom:1px solid var(--line); }
+  .qty-box { display:flex; align-items:center; border:1px solid var(--line); border-radius:10px; }
+  .qty-box button { all:unset; cursor:pointer; padding:4px 8px; color:#6b7a74; }
+  .checkout-card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; }
+  .field { display:block; margin-bottom:12px; }
+  .field span { display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; color:#6b7a74; margin-bottom:4px; }
+  .field input, .field select { width:100%; padding:8px 12px; border:1px solid var(--line); border-radius:10px; font-size:13px; }
+  .totals div { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; color:#6b7a74; }
+  .totals .grand { font-weight:600; font-size:16px; color:var(--ink); border-top:1px solid var(--line); margin-top:6px; padding-top:8px; }
+  .success-banner { margin-top:20px; background:#e6f4ec; border:1px solid #bfe6cf; border-radius:10px; padding:16px; }
+  .success-banner .head { display:flex; align-items:center; justify-content:space-between; }
+  .success-banner .head .left { display:flex; align-items:center; gap:8px; color:var(--teal); font-weight:600; font-size:13px; }
+
+  .receipt-screen { display:flex; justify-content:center; padding:30px 0; }
+  .receipt-paper { width:300px; background:#fff; border:1px solid var(--line); border-radius:6px; padding:18px; font-family:'IBM Plex Mono',monospace; font-size:12px; box-shadow:0 4px 16px rgba(0,0,0,0.06); }
+  .receipt-paper .store { text-align:center; font-weight:700; font-size:14px; margin-bottom:2px; }
+  .receipt-paper .meta { text-align:center; font-size:11px; color:#555; }
+  .rdiv { border-top:1px dashed #999; margin:10px 0; }
+  .receipt-meta-row { display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px; }
+  .receipt-paper table { font-size:11px; }
+  .receipt-paper th, .receipt-paper td { padding:3px 0; border:none; }
+  .receipt-paper .totals div { font-size:12px; }
+  .grand2 { font-weight:700; font-size:14px; margin-top:4px; }
+  .receipt-footer { text-align:center; margin-top:8px; font-size:11px; }
+
+  .view { display:none; }
+  .view.active { display:block; }
+
+  /* Login screen */
+  #login-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .login-card { width:340px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:28px; text-align:center; }
+  .login-card .logo { width:42px; height:42px; border-radius:10px; background:var(--tealDark); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px; margin:0 auto 10px; }
+  .login-card h1 { font-size:16px; margin:4px 0 2px; }
+  .login-card .tag { font-size:11px; color:#6b7a74; font-family:'IBM Plex Mono',monospace; margin-bottom:18px; }
+  .login-card label { display:block; text-align:left; margin-bottom:12px; }
+  .login-card label span { display:block; font-size:11px; text-transform:uppercase; color:#6b7a74; font-family:'IBM Plex Mono',monospace; margin-bottom:4px; }
+  .login-card input { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:13px; }
+  .login-card .btn { width:100%; justify-content:center; margin-top:6px; }
+  .login-card .hint { font-size:11px; color:#9ca8a2; margin-top:14px; }
+
+  #app-screen { display:none; }
+  body.logged-in #app-screen { display:flex; min-height:100vh; }
+  body.logged-in #login-screen { display:none; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="logo">✚</div>
+    <h1 class="display">Umer Din Medical Store</h1>
+    <p class="tag">staff &amp; partner login</p>
+    <label><span>Email</span><input value="kashif@umerdin.pk"></label>
+    <label><span>Password</span><input type="password" value="••••••••"></label>
+    <button class="btn" onclick="document.body.classList.add('logged-in')">Log in</button>
+    <p class="hint">Naya account chahiye? Admin/partner se Firebase Console mein banwa lein.</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" class="app role-admin">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-dot">✚</div>
+      <div><p>Umer Din Medical</p><span>store POS — preview</span></div>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" data-view="dashboard">📊&nbsp; Dashboard</button>
+      <button class="nav-btn" data-view="billing">🛒&nbsp; Billing</button>
+      <button class="nav-btn" data-view="inventory">📦&nbsp; Inventory</button>
+      <button class="nav-btn" data-view="sales">🧾&nbsp; Sales History</button>
+      <button class="nav-btn admin-only" data-view="reports">📈&nbsp; Reports</button>
+      <button class="nav-btn admin-only" data-view="users">👥&nbsp; Staff &amp; Roles</button>
+      <button class="nav-btn" data-view="receipt">🖨&nbsp; Receipt preview</button>
+    </nav>
+    <div class="role-switcher">
+      <p>Preview as</p>
+      <div class="toggle">
+        <button class="role-btn active" data-role="admin">Partner (admin)</button>
+        <button class="role-btn" data-role="staff">Staff</button>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="who"><p id="who-name">Kashif (you)</p><span id="who-role">admin</span></div>
+      <span style="color:rgba(167,243,208,0.7);">⏻</span>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="header-row">
+        <div><h1>Dashboard</h1><p class="subtitle">Aaj ka overview — stock, sales aur expiry alerts ek nazar mein</p></div>
+      </div>
+      <div class="grid4">
+        <div class="card stat"><div><p class="label">Today's Sales</p><p class="value">Rs. 4,250</p></div><div class="icon-pill pill-teal">📈</div></div>
+        <div class="card stat"><div><p class="label">Bills Today</p><p class="value">18</p></div><div class="icon-pill pill-teal">💊</div></div>
+        <div class="card stat"><div><p class="label">Low Stock</p><p class="value">3</p></div><div class="icon-pill pill-amber">📦</div></div>
+        <div class="card stat"><div><p class="label">Expired</p><p class="value">1</p></div><div class="icon-pill pill-red">⚠️</div></div>
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <div class="panel-head">Expiring within 60 days</div>
+          <div class="row strip strip-warning"><div><p class="name">Panadol Extra</p><p class="sub">Batch PNX-221</p></div><span class="badge badge-warning">2026-08-10</span></div>
+          <div class="row strip strip-warning"><div><p class="name">Augmentin 625mg</p><p class="sub">Batch AUG-118</p></div><span class="badge badge-warning">2026-07-30</span></div>
+          <div class="row strip strip-expired"><div><p class="name">Disprin</p><p class="sub">Batch DSP-009</p></div><span class="badge badge-expired">2026-05-12</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">Low stock</div>
+          <div class="row strip strip-warning"><div><p class="name">Brufen 400mg</p><p class="sub">Reorder level 10</p></div><span class="badge badge-warning">6 left</span></div>
+          <div class="row strip strip-warning"><div><p class="name">ORS Sachets</p><p class="sub">Reorder level 20</p></div><span class="badge badge-warning">12 left</span></div>
+          <div class="row strip strip-warning"><div><p class="name">Surgical Masks</p><p class="sub">Reorder level 30</p></div><span class="badge badge-warning">9 left</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BILLING -->
+    <section class="view" id="view-billing">
+      <div class="header-row">
+        <div><h1>Billing</h1><p class="subtitle">Medicine search karein aur cart mein add karein</p></div>
+      </div>
+      <div class="billing-grid">
+        <div>
+          <div class="search-wrap"><span class="ic">🔍</span><input value="Panadol"></div>
+          <div class="panel">
+            <div class="panel-head">Cart</div>
+            <div class="cart-item">
+              <div><p class="name">Panadol Extra</p><p class="sub">Rs. 35 each</p></div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div class="qty-box"><button>–</button><span class="mono" style="padding:0 8px;">2</span><button>+</button></div>
+                <span class="mono" style="width:60px;text-align:right;">Rs. 70</span>
+                <span style="color:#9ca8a2;">🗑</span>
+              </div>
+            </div>
+            <div class="cart-item">
+              <div><p class="name">Augmentin 625mg</p><p class="sub">Rs. 180 each</p></div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div class="qty-box"><button>–</button><span class="mono" style="padding:0 8px;">1</span><button>+</button></div>
+                <span class="mono" style="width:60px;text-align:right;">Rs. 180</span>
+                <span style="color:#9ca8a2;">🗑</span>
+              </div>
+            </div>
+          </div>
+          <div class="success-banner">
+            <div class="head">
+              <div class="left">🧾 Bill complete — Rs. 230 (Cash)</div>
+              <button class="btn-outline" onclick="goTo('receipt')">🖨 Print receipt</button>
+            </div>
+            <p style="font-size:12px;color:#3a4a44;margin:6px 0 0;">2 item(s) sold to Ayesha Khan by Kashif. Stock auto-update ho gaya hai.</p>
+          </div>
+        </div>
+        <div class="checkout-card">
+          <h2 class="display" style="font-size:14px;font-weight:600;margin:0 0 12px;">Checkout</h2>
+          <label class="field"><span>Customer name</span><input value="Ayesha Khan"></label>
+          <label class="field"><span>Phone (optional)</span><input value="03001234567"></label>
+          <label class="field"><span>Discount (Rs.)</span><input value="20"></label>
+          <label class="field"><span>Payment method</span><select><option>Cash</option></select></label>
+          <div class="totals">
+            <div><span>Subtotal</span><span class="mono">Rs. 250</span></div>
+            <div><span>Discount</span><span class="mono">- Rs. 20</span></div>
+            <div class="grand"><span>Total</span><span class="mono">Rs. 230</span></div>
+          </div>
+          <button class="btn" style="width:100%;justify-content:center;margin-top:14px;">Complete sale</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- INVENTORY -->
+    <section class="view" id="view-inventory">
+      <div class="header-row">
+        <div><h1>Inventory</h1><p class="subtitle">Stock levels aur expiry dates manage karein</p></div>
+        <button class="btn">＋ Add medicine</button>
+      </div>
+      <div class="search-wrap"><span class="ic">🔍</span><input placeholder="Search by name, category, batch..."></div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Medicine</th><th>Batch</th><th>Stock</th><th>Price</th><th>Expiry</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr><td style="border-left:4px solid var(--green);">Panadol Extra<br><span class="sub mono" style="color:#6b7a74;">Pain relief</span></td><td class="mono">PNX-221</td><td>140</td><td class="mono">Rs. 35</td><td class="mono">2026-08-10</td><td><span class="badge badge-warning">Expiring</span></td><td style="text-align:right;">✏️ <span class="admin-only-icon">🗑</span></td></tr>
+            <tr><td style="border-left:4px solid var(--amber);">Augmentin 625mg<br><span class="sub mono" style="color:#6b7a74;">Antibiotic</span></td><td class="mono">AUG-118</td><td style="color:var(--amber);font-weight:600;">6</td><td class="mono">Rs. 180</td><td class="mono">2026-07-30</td><td><span class="badge badge-warning">Expiring</span></td><td style="text-align:right;">✏️ <span class="admin-only-icon">🗑</span></td></tr>
+            <tr><td style="border-left:4px solid var(--red);">Disprin<br><span class="sub mono" style="color:#6b7a74;">Pain relief</span></td><td class="mono">DSP-009</td><td>40</td><td class="mono">Rs. 8</td><td class="mono">2026-05-12</td><td><span class="badge badge-expired">Expired</span></td><td style="text-align:right;">✏️ <span class="admin-only-icon">🗑</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="inv-note" style="font-size:11px;color:#9ca8a2;margin-top:10px;"></p>
+    </section>
+
+    <!-- SALES HISTORY -->
+    <section class="view" id="view-sales">
+      <div class="header-row">
+        <div><h1>Sales History</h1><p class="subtitle">Har bill ka record — accountability ke liye "Sold by" column</p></div>
+        <div style="text-align:right;"><p class="label" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b7a74;text-transform:uppercase;">Total revenue</p><p class="display" style="font-size:18px;font-weight:600;">Rs. 76,500</p></div>
+      </div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Sold by</th><th>Payment</th><th style="text-align:right;">Total</th></tr></thead>
+          <tbody>
+            <tr><td class="mono" style="font-size:11px;">24/06/2026 4:42 PM</td><td>Ayesha Khan</td><td style="font-size:12px;color:#6b7a74;">Panadol Extra x2, Augmentin x1</td><td style="font-weight:500;">Kashif</td><td>Cash</td><td class="mono" style="text-align:right;">Rs. 230</td></tr>
+            <tr><td class="mono" style="font-size:11px;">24/06/2026 2:10 PM</td><td>Walk-in</td><td style="font-size:12px;color:#6b7a74;">ORS Sachets x3</td><td style="font-weight:500;">Bilal</td><td>Cash</td><td class="mono" style="text-align:right;">Rs. 75</td></tr>
+            <tr><td class="mono" style="font-size:11px;">23/06/2026 6:55 PM</td><td>M. Tariq</td><td style="font-size:12px;color:#6b7a74;">Brufen 400mg x1</td><td style="font-weight:500;">Kashif</td><td>Mobile wallet</td><td class="mono" style="text-align:right;">Rs. 65</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REPORTS (admin only) -->
+    <section class="view" id="view-reports">
+      <div class="header-row">
+        <div><h1>Reports</h1><p class="subtitle">Partners ke liye revenue, cost aur profit ka breakdown</p></div>
+        <select style="font-size:13px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#fff;"><option>Last 30 days</option></select>
+      </div>
+      <div class="grid4">
+        <div class="card stat" style="display:block;"><p class="label">Revenue</p><p class="value">Rs. 76,500</p></div>
+        <div class="card stat" style="display:block;"><p class="label">Cost (COGS)</p><p class="value">Rs. 48,200</p></div>
+        <div class="card stat" style="display:block;"><p class="label">Net Profit</p><p class="value profit">Rs. 28,300</p></div>
+        <div class="card stat" style="display:block;"><p class="label">Bills</p><p class="value">312</p></div>
+      </div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Date</th><th>Bills</th><th>Revenue</th><th>Cost</th><th style="text-align:right;">Profit</th></tr></thead>
+          <tbody>
+            <tr><td class="mono" style="font-size:11px;">2026-06-24</td><td>18</td><td class="mono">Rs. 4,250</td><td class="mono" style="color:#6b7a74;">Rs. 2,600</td><td class="mono" style="text-align:right;font-weight:600;color:var(--teal);">Rs. 1,650</td></tr>
+            <tr><td class="mono" style="font-size:11px;">2026-06-23</td><td>15</td><td class="mono">Rs. 3,840</td><td class="mono" style="color:#6b7a74;">Rs. 2,310</td><td class="mono" style="text-align:right;font-weight:600;color:var(--teal);">Rs. 1,530</td></tr>
+            <tr><td class="mono" style="font-size:11px;">2026-06-22</td><td>21</td><td class="mono">Rs. 5,120</td><td class="mono" style="color:#6b7a74;">Rs. 3,050</td><td class="mono" style="text-align:right;font-weight:600;color:var(--teal);">Rs. 2,070</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- USERS (admin only) -->
+    <section class="view" id="view-users">
+      <div class="header-row">
+        <div><h1>Staff &amp; Roles</h1><p class="subtitle">Partner (admin) access se delete &amp; reports control hota hai</p></div>
+      </div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th style="text-align:right;">Action</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:500;">Kashif</td><td class="mono" style="font-size:11px;color:#6b7a74;">kashif@umerdin.pk</td><td><span class="badge badge-safe">admin</span></td><td style="text-align:right;"><button class="btn-outline">🛡 Make staff</button></td></tr>
+            <tr><td style="font-weight:500;">Umer</td><td class="mono" style="font-size:11px;color:#6b7a74;">umer@umerdin.pk</td><td><span class="badge badge-safe">admin</span></td><td style="text-align:right;"><button class="btn-outline">🛡 Make staff</button></td></tr>
+            <tr><td style="font-weight:500;">Bilal</td><td class="mono" style="font-size:11px;color:#6b7a74;">bilal@umerdin.pk</td><td><span class="badge badge-unknown">staff</span></td><td style="text-align:right;"><button class="btn-outline">🛡 Make admin</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- RECEIPT -->
+    <section class="view" id="view-receipt">
+      <div class="header-row">
+        <div><h1>Receipt preview</h1><p class="subtitle">Checkout ke baad "Print receipt" is layout ko print karta hai</p></div>
+      </div>
+      <div class="receipt-screen">
+        <div class="receipt-paper">
+          <p class="store">Umer Din Medical Store</p>
+          <p class="meta">Main Bazaar, Sahiwal</p>
+          <p class="meta">0301-1234567</p>
+          <div class="rdiv"></div>
+          <div class="receipt-meta-row"><span>24/06/2026 4:42 PM</span><span>Bill #A1B2C3</span></div>
+          <div class="receipt-meta-row"><span>Customer: Ayesha Khan</span><span>Cash</span></div>
+          <div class="receipt-meta-row"><span>Sold by: Kashif</span></div>
+          <div class="rdiv"></div>
+          <table>
+            <thead><tr><th align="left">Item</th><th align="center">Qty</th><th align="right">Price</th><th align="right">Total</th></tr></thead>
+            <tbody>
+              <tr><td>Panadol Extra</td><td align="center">2</td><td align="right">35</td><td align="right">70</td></tr>
+              <tr><td>Augmentin 625mg</td><td align="center">1</td><td align="right">180</td><td align="right">180</td></tr>
+            </tbody>
+          </table>
+          <div class="rdiv"></div>
+          <div class="totals">
+            <div><span>Subtotal</span><span>Rs. 250</span></div>
+            <div><span>Discount</span><span>- Rs. 20</span></div>
+            <div class="grand2" style="display:flex;justify-content:space-between;"><span>Total</span><span>Rs. 230</span></div>
+          </div>
+          <div class="rdiv"></div>
+          <p class="receipt-footer">Shukriya! Sehat mand rahein.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  function goTo(view) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelector('.nav-btn[data-view="' + view + '"]').classList.add('active');
+    document.getElementById('view-' + view).classList.add('active');
+  }
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => goTo(btn.dataset.view));
+  });
+
+  const appScreen = document.getElementById('app-screen');
+  const whoName = document.getElementById('who-name');
+  const whoRole = document.getElementById('who-role');
+  const invNote = document.getElementById('inv-note');
+
+  function setRole(role) {
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.toggle('active', b.dataset.role === role));
+    appScreen.classList.toggle('role-admin', role === 'admin');
+    document.querySelectorAll('.admin-only-icon').forEach(el => el.style.display = role === 'admin' ? 'inline' : 'none');
+    if (role === 'admin') {
+      whoName.textContent = 'Kashif (you)';
+      whoRole.textContent = 'admin';
+      invNote.textContent = '';
+    } else {
+      whoName.textContent = 'Bilal (you)';
+      whoRole.textContent = 'staff';
+      invNote.textContent = 'Staff role mein delete (🗑) button hidden hota hai — sirf admin/partner delete kar sakta hai.';
+    }
+    // staff can't be on admin-only views
+    if (role === 'staff') {
+      const activeAdminOnly = document.querySelector('.nav-btn.admin-only.active');
+      if (activeAdminOnly) goTo('dashboard');
+    }
+  }
+  document.querySelectorAll('.role-btn').forEach(btn => {
+    btn.addEventListener('click', () => setRole(btn.dataset.role));
+  });
+  setRole('admin');
+</script>
+
+</body>
+</html>

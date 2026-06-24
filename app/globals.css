@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap");
+
+html, body {
+  background: #F6F8F7;
+  color: #10211C;
+}
+
+/* Signature element: expiry-status strip, like a pharmacy shelf tag.
+   Every medicine row carries a 4px color bar on its left edge. */
+.strip {
+  position: relative;
+}
+.strip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 4px;
+  border-radius: 4px;
+}
+.strip-safe::before { background: #1E8E5A; }
+.strip-warning::before { background: #B6741A; }
+.strip-expired::before { background: #B3261E; }
+.strip-unknown::before { background: #DCE6E2; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.badge-safe { background: #E6F4EC; color: #1E8E5A; }
+.badge-warning { background: #FBEEDD; color: #B6741A; }
+.badge-expired { background: #FBE9E7; color: #B3261E; }
+.badge-unknown { background: #EEF2F0; color: #5C6B65; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #DCE6E2; border-radius: 8px; }
