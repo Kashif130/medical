@@ -22,7 +22,7 @@ const emptyForm = {
   price: "",
   costPrice: "",
   expiryDate: "",
-  packSize: "",      // e.g. "1000S", "100S", "120ML"
+  packSize: "",
   manufacturer: "",
 };
 
@@ -112,7 +112,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-4 md:p-8 max-w-6xl">
       <header className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-display font-semibold">Inventory</h1>
@@ -120,23 +120,24 @@ export default function InventoryPage() {
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-2 bg-clinic-teal text-white text-sm font-medium px-4 py-2.5 rounded-clinic hover:bg-clinic-tealDark transition-colors"
+          className="flex items-center gap-2 bg-clinic-teal text-white text-sm font-medium px-3 py-2 md:px-4 md:py-2.5 rounded-clinic hover:bg-clinic-tealDark transition-colors"
         >
-          <Plus size={16} /> Add medicine
+          <Plus size={16} /> <span className="hidden sm:inline">Add medicine</span><span className="sm:hidden">Add</span>
         </button>
       </header>
 
-      <div className="relative mb-4 max-w-sm">
+      <div className="relative mb-4">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Name, category, batch, manufacturer..."
+          placeholder="Name, category, batch..."
           className="w-full pl-9 pr-3 py-2 text-sm border border-clinic-line rounded-clinic bg-white focus:outline-none focus:ring-2 focus:ring-clinic-teal/30"
         />
       </div>
 
-      <div className="bg-clinic-panel border border-clinic-line rounded-clinic overflow-hidden">
+      {/* Desktop table — hidden on mobile */}
+      <div className="hidden md:block bg-clinic-panel border border-clinic-line rounded-clinic overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-clinic-line text-left text-xs uppercase text-gray-500 font-mono">
@@ -200,6 +201,73 @@ export default function InventoryPage() {
         </table>
       </div>
 
+      {/* Mobile cards — shown only on mobile */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 && (
+          <p className="text-center text-gray-400 text-sm py-10">
+            Koi medicine nahi mili. "Add" se naya item shamil karein.
+          </p>
+        )}
+        {filtered.map((m) => {
+          const status = expiryStatus(m.expiryDate);
+          const low = (m.stock ?? 0) <= (m.reorderLevel ?? 10);
+          return (
+            <div
+              key={m.id}
+              className={`bg-clinic-panel border border-clinic-line rounded-clinic p-4 strip strip-${status}`}
+            >
+              {/* Top row: name + actions */}
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <p className="font-semibold text-sm">{m.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {[m.category, m.packSize, m.manufacturer].filter(Boolean).join(" · ")}
+                  </p>
+                  {m.batchNo && (
+                    <p className="text-xs font-mono text-gray-400 mt-0.5">Batch: {m.batchNo}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`badge badge-${status} text-xs`}>{STATUS_LABEL[status]}</span>
+                  <button onClick={() => openEdit(m)} className="text-gray-500 hover:text-clinic-teal p-1">
+                    <Pencil size={15} />
+                  </button>
+                  {isAdmin && (
+                    <button onClick={() => handleDelete(m.id)} className="text-gray-500 hover:text-clinic-red p-1">
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats grid */}
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="bg-white rounded-lg px-3 py-2 border border-clinic-line">
+                  <p className="text-gray-400 uppercase font-mono mb-0.5">Stock</p>
+                  <p className={`font-bold text-sm ${low ? "text-clinic-amber" : "text-gray-800"}`}>
+                    {m.stock ?? 0}
+                  </p>
+                </div>
+                <div className="bg-white rounded-lg px-3 py-2 border border-clinic-line">
+                  <p className="text-gray-400 uppercase font-mono mb-0.5">Cost</p>
+                  <p className="font-semibold text-gray-800">Rs.{m.costPrice || 0}</p>
+                </div>
+                <div className="bg-white rounded-lg px-3 py-2 border border-clinic-line">
+                  <p className="text-gray-400 uppercase font-mono mb-0.5">Sale</p>
+                  <p className="font-semibold text-clinic-teal">Rs.{m.price}</p>
+                </div>
+              </div>
+
+              {/* Avg cost + expiry row */}
+              <div className="flex items-center justify-between mt-2 text-xs text-gray-500 font-mono">
+                <span>Avg: Rs.{(m.avgCostPrice ?? m.costPrice ?? 0).toFixed(2)}</span>
+                <span>Exp: {m.expiryDate || "—"}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {showForm && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <form
@@ -223,7 +291,7 @@ export default function InventoryPage() {
               <Field label="Category">
                 <input className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
               </Field>
-              <Field label="Pack size (e.g. 1000S, 120ML)">
+              <Field label="Pack size (e.g. 1000S)">
                 <input className="input" placeholder="e.g. 1000S" value={form.packSize} onChange={(e) => setForm({ ...form, packSize: e.target.value })} />
               </Field>
             </div>
