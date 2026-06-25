@@ -3,12 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { LayoutDashboard, Boxes, ShoppingCart, Receipt, Cross, Users, BarChart3, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Boxes,
+  ShoppingCart,
+  Receipt,
+  Cross,
+  Users,
+  BarChart3,
+  LogOut,
+  Truck,
+  PackagePlus,
+} from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/billing", label: "Billing", icon: ShoppingCart },
   { href: "/inventory", label: "Inventory", icon: Boxes },
+  { href: "/purchases", label: "Purchases", icon: PackagePlus },
+  { href: "/suppliers", label: "Suppliers", icon: Truck },
   { href: "/sales", label: "Sales History", icon: Receipt },
   { href: "/reports", label: "Reports", icon: BarChart3, adminOnly: true },
   { href: "/users", label: "Staff & Roles", icon: Users, adminOnly: true },
