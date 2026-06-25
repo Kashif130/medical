@@ -14,9 +14,7 @@ service cloud.firestore {
       return isSignedIn() && userRole() == 'admin';
     }
 
-    // Staff/partner profiles. Anyone signed in can create their OWN profile
-    // on first login. Only that user or an admin can update it (role changes
-    // are normally done by an admin via the Staff & Roles page).
+    // User profiles
     match /users/{uid} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.auth.uid == uid;
@@ -24,17 +22,29 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Inventory: any signed-in staff member can add/update stock,
-    // but only an admin (partner) can permanently delete a medicine.
+    // Inventory: any signed-in staff can add/update; only admin can delete
     match /medicines/{id} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
       allow delete: if isAdmin();
     }
 
-    // Sales: any signed-in staff member can create a bill.
-    // Only an admin can edit or delete a past sale record (audit safety).
+    // Sales: any staff can create; only admin can edit/delete
     match /sales/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Suppliers: any staff can read; only admin can create/update/delete
+    match /suppliers/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    // Purchases: any staff can create (receive stock); only admin can delete
+    match /purchases/{id} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isAdmin();
