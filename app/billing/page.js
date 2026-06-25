@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { watchInventory, checkoutSale, expiryStatus } from "@/lib/firebase";
+import { watchInventory, checkoutSale, expiryStatus, GST_RATE } from "@/lib/firebase";
 import { Search, Plus, Minus, Trash2, ReceiptText, Printer } from "lucide-react";
 import Receipt from "@/components/Receipt";
 import { useAuth } from "@/context/AuthContext";
@@ -13,7 +13,9 @@ export default function BillingPage() {
   const [cart, setCart] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [discount, setDiscount] = useState(0);
+  const [flatDiscount, setFlatDiscount] = useState(0);
+  const [miscCharges, setMiscCharges] = useState(0);
+  const [applyGst, setApplyGst] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [error, setError] = useState("");
   const [lastBill, setLastBill] = useState(null);
@@ -33,16 +35,26 @@ export default function BillingPage() {
       if (existing) {
         return prev.map((i) => (i.id === med.id ? { ...i, qty: i.qty + 1 } : i));
       }
-      return [...prev, { id: med.id, name: med.name, price: med.price, costPrice: med.costPrice || 0, qty: 1, maxStock: med.stock }];
+      return [
+        ...prev,
+        {
+          id: med.id,
+          name: med.name,
+          price: med.price,
+          costPrice: med.costPrice || 0,
+          qty: 1,
+          maxStock: med.stock,
+        },
+      ];
     });
     setSearch("");
   }
 
   function changeQty(id, delta) {
     setCart((prev) =>
-      prev
-        .map((i) => (i.id === id ? { ...i, qty: Math.max(1, Math.min(i.maxStock, i.qty + delta)) } : i))
-        .filter(Boolean)
+      prev.map((i) =>
+        i.id === id ? { ...i, qty: Math.max(1, Math.min(i.maxStock, i.qty + delta)) } : i
+      )
     );
   }
 
@@ -51,7 +63,9 @@ export default function BillingPage() {
   }
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const total = Math.max(0, subtotal - Number(discount || 0));
+  const afterDiscount = Math.max(0, subtotal - Number(flatDiscount || 0));
+  const gstAmount = applyGst ? Math.round(afterDiscount * GST_RATE) : 0;
+  const total = Math.max(0, afterDiscount + gstAmount + Number(miscCharges || 0));
 
   async function handleCheckout() {
     if (cart.length === 0) return;
@@ -59,29 +73,41 @@ export default function BillingPage() {
     setError("");
     try {
       const saleId = await checkoutSale({
-        items: cart.map(({ id, name, price, costPrice, qty }) => ({ id, name, price, costPrice, qty })),
+        items: cart.map(({ id, name, price, costPrice, qty }) => ({
+          id, name, price, costPrice, qty,
+        })),
         customerName,
         customerPhone,
+        subtotal,
+        flatDiscount: Number(flatDiscount || 0),
+        miscCharges: Number(miscCharges || 0),
+        applyGst,
         total,
-        discount: Number(discount || 0),
         paymentMethod,
         createdBy: { uid: user?.uid || null, name: profile?.name || "Unknown" },
       });
+
       setLastBill({
         id: saleId,
         date: new Date(),
         items: cart,
         subtotal,
-        discount: Number(discount || 0),
+        flatDiscount: Number(flatDiscount || 0),
+        miscCharges: Number(miscCharges || 0),
+        gstAmount,
+        applyGst,
         total,
         customerName,
         paymentMethod,
         soldBy: profile?.name || "Unknown",
       });
+
       setCart([]);
       setCustomerName("");
       setCustomerPhone("");
-      setDiscount(0);
+      setFlatDiscount(0);
+      setMiscCharges(0);
+      setApplyGst(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -134,7 +160,9 @@ export default function BillingPage() {
           </div>
           <div className="divide-y divide-clinic-line">
             {cart.length === 0 && (
-              <p className="px-5 py-8 text-sm text-gray-400 text-center">Cart khali hai. Upar search se items add karein.</p>
+              <p className="px-5 py-8 text-sm text-gray-400 text-center">
+                Cart khali hai. Upar search se items add karein.
+              </p>
             )}
             {cart.map((item) => (
               <div key={item.id} className="px-5 py-3 flex items-center justify-between">
@@ -144,16 +172,27 @@ export default function BillingPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center border border-clinic-line rounded-clinic">
-                    <button onClick={() => changeQty(item.id, -1)} className="px-2 py-1 text-gray-500 hover:text-clinic-teal">
+                    <button
+                      onClick={() => changeQty(item.id, -1)}
+                      className="px-2 py-1 text-gray-500 hover:text-clinic-teal"
+                    >
                       <Minus size={13} />
                     </button>
                     <span className="px-2 text-sm font-mono">{item.qty}</span>
-                    <button onClick={() => changeQty(item.id, 1)} className="px-2 py-1 text-gray-500 hover:text-clinic-teal">
+                    <button
+                      onClick={() => changeQty(item.id, 1)}
+                      className="px-2 py-1 text-gray-500 hover:text-clinic-teal"
+                    >
                       <Plus size={13} />
                     </button>
                   </div>
-                  <span className="text-sm font-mono w-20 text-right">Rs. {(item.price * item.qty).toFixed(0)}</span>
-                  <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-clinic-red">
+                  <span className="text-sm font-mono w-20 text-right">
+                    Rs. {(item.price * item.qty).toFixed(0)}
+                  </span>
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    className="text-gray-400 hover:text-clinic-red"
+                  >
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -184,47 +223,111 @@ export default function BillingPage() {
         <Receipt bill={lastBill} />
       </div>
 
+      {/* Checkout panel */}
       <div>
         <div className="bg-clinic-panel border border-clinic-line rounded-clinic p-5 sticky top-6 space-y-4">
           <h2 className="font-display font-semibold text-sm">Checkout</h2>
 
           <label className="block">
             <span className="text-xs font-mono text-gray-500 uppercase block mb-1">Customer name</span>
-            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="checkout-input" />
+            <input
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="checkout-input"
+            />
           </label>
+
           <label className="block">
             <span className="text-xs font-mono text-gray-500 uppercase block mb-1">Phone (optional)</span>
-            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="checkout-input" />
+            <input
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              className="checkout-input"
+            />
           </label>
+
           <label className="block">
-            <span className="text-xs font-mono text-gray-500 uppercase block mb-1">Discount (Rs.)</span>
-            <input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} className="checkout-input" />
+            <span className="text-xs font-mono text-gray-500 uppercase block mb-1">Flat Discount (Rs.)</span>
+            <input
+              type="number"
+              min="0"
+              value={flatDiscount}
+              onChange={(e) => setFlatDiscount(e.target.value)}
+              className="checkout-input"
+            />
           </label>
+
+          <label className="block">
+            <span className="text-xs font-mono text-gray-500 uppercase block mb-1">Misc charges (+)</span>
+            <input
+              type="number"
+              min="0"
+              value={miscCharges}
+              onChange={(e) => setMiscCharges(e.target.value)}
+              className="checkout-input"
+            />
+          </label>
+
+          {/* GST toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div
+              onClick={() => setApplyGst((v) => !v)}
+              className={`w-9 h-5 rounded-full transition-colors relative ${applyGst ? "bg-clinic-teal" : "bg-gray-200"}`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${applyGst ? "translate-x-4" : ""}`}
+              />
+            </div>
+            <span className="text-xs font-mono text-gray-500 uppercase">Apply GST / S.Tax (17%)</span>
+          </label>
+
           <label className="block">
             <span className="text-xs font-mono text-gray-500 uppercase block mb-1">Payment method</span>
-            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="checkout-input">
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="checkout-input"
+            >
               <option>Cash</option>
               <option>Card</option>
               <option>Mobile wallet</option>
+              <option>Credit</option>
             </select>
           </label>
 
+          {/* Totals breakdown */}
           <div className="border-t border-clinic-line pt-3 space-y-1.5 text-sm">
             <div className="flex justify-between text-gray-500">
               <span>Subtotal</span>
               <span className="font-mono">Rs. {subtotal.toFixed(0)}</span>
             </div>
-            <div className="flex justify-between text-gray-500">
-              <span>Discount</span>
-              <span className="font-mono">- Rs. {Number(discount || 0).toFixed(0)}</span>
-            </div>
-            <div className="flex justify-between font-semibold text-base pt-1">
-              <span>Total</span>
+            {Number(flatDiscount) > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Flat Disc (−)</span>
+                <span className="font-mono text-clinic-red">− Rs. {Number(flatDiscount).toFixed(0)}</span>
+              </div>
+            )}
+            {applyGst && (
+              <div className="flex justify-between text-gray-500">
+                <span>S.Tax / GST (17%)</span>
+                <span className="font-mono">+ Rs. {gstAmount.toFixed(0)}</span>
+              </div>
+            )}
+            {Number(miscCharges) > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Misc (+)</span>
+                <span className="font-mono">+ Rs. {Number(miscCharges).toFixed(0)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-semibold text-base pt-1 border-t border-clinic-line">
+              <span>Grand Total</span>
               <span className="font-mono">Rs. {total.toFixed(0)}</span>
             </div>
           </div>
 
-          {error && <p className="text-xs text-clinic-red bg-red-50 px-3 py-2 rounded-clinic">{error}</p>}
+          {error && (
+            <p className="text-xs text-clinic-red bg-red-50 px-3 py-2 rounded-clinic">{error}</p>
+          )}
 
           <button
             onClick={handleCheckout}
