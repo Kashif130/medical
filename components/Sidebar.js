@@ -4,27 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
-  LayoutDashboard,
-  Boxes,
-  ShoppingCart,
-  Receipt,
-  Cross,
-  Users,
-  BarChart3,
-  LogOut,
-  Truck,
-  PackagePlus,
+  LayoutDashboard, Boxes, ShoppingCart, Receipt, Cross,
+  Users, BarChart3, LogOut, Truck, PackagePlus,
+  RotateCcw, CreditCard, AlertTriangle,
 } from "lucide-react";
 
 const NAV = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/billing", label: "Billing", icon: ShoppingCart },
-  { href: "/inventory", label: "Inventory", icon: Boxes },
-  { href: "/purchases", label: "Purchases", icon: PackagePlus },
-  { href: "/suppliers", label: "Suppliers", icon: Truck },
-  { href: "/sales", label: "Sales History", icon: Receipt },
-  { href: "/reports", label: "Reports", icon: BarChart3, adminOnly: true },
-  { href: "/users", label: "Staff & Roles", icon: Users, adminOnly: true },
+  { href: "/",                  label: "Dashboard",        icon: LayoutDashboard },
+  { href: "/billing",           label: "Billing",          icon: ShoppingCart },
+  { href: "/inventory",         label: "Inventory",        icon: Boxes },
+  { href: "/purchases",         label: "Purchases",        icon: PackagePlus },
+  { href: "/suppliers",         label: "Suppliers",        icon: Truck },
+  { href: "/sales",             label: "Sales History",    icon: Receipt },
+  { href: "/returns",           label: "Returns",          icon: RotateCcw },
+  { href: "/credits",           label: "Udhar / Credit",   icon: CreditCard },
+  { href: "/expiry-management", label: "Expiry Alerts",    icon: AlertTriangle },
+  { href: "/reports",           label: "Reports",          icon: BarChart3,   adminOnly: true },
+  { href: "/users",             label: "Staff & Roles",    icon: Users,       adminOnly: true },
 ];
 
 export default function Sidebar({ profile }) {
@@ -32,43 +28,43 @@ export default function Sidebar({ profile }) {
   const { logout, isAdmin } = useAuth();
 
   return (
-    <aside className="w-60 shrink-0 bg-clinic-tealDark text-white flex flex-col min-h-screen">
-      <div className="px-5 py-6 flex items-center gap-2 border-b border-white/10">
-        <Cross size={20} className="text-emerald-300" />
+    <aside style={{ width:220, flexShrink:0, background:"#0a5c4a", color:"white", display:"flex", flexDirection:"column", minHeight:"100vh" }}>
+      {/* Logo */}
+      <div style={{ padding:"20px 16px", borderBottom:"1px solid rgba(255,255,255,0.1)", display:"flex", alignItems:"center", gap:10 }}>
+        <Cross size={20} color="#6ee7b7"/>
         <div>
-          <p className="font-display font-semibold text-sm leading-tight">Umer Din Medical</p>
-          <p className="text-[11px] text-emerald-200/70 font-mono">store POS</p>
+          <p style={{ fontWeight:700, fontSize:13 }}>Umer Din Medical</p>
+          <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", fontFamily:"monospace" }}>store POS</p>
         </div>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV.filter((item) => !item.adminOnly || isAdmin).map(({ href, label, icon: Icon }) => {
+
+      {/* Nav */}
+      <nav style={{ flex:1, padding:"12px 8px", overflowY:"auto" }}>
+        {NAV.filter(item => !item.adminOnly || isAdmin).map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-clinic text-sm font-medium transition-colors ${
-                active
-                  ? "bg-white/10 text-white"
-                  : "text-emerald-100/80 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <Icon size={17} />
+            <Link key={href} href={href}
+              style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:8,
+                fontSize:13, fontWeight:500, textDecoration:"none", marginBottom:2,
+                background: active ? "rgba(255,255,255,0.12)" : "transparent",
+                color: active ? "white" : "rgba(255,255,255,0.7)",
+                transition:"background 0.15s, color 0.15s" }}>
+              <Icon size={16}/>
               {label}
             </Link>
           );
         })}
       </nav>
-      <div className="px-4 py-4 border-t border-white/10">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium leading-tight">{profile?.name || "..."}</p>
-            <p className="text-[11px] font-mono text-emerald-200/60 uppercase">{profile?.role || "staff"}</p>
-          </div>
-          <button onClick={logout} className="text-emerald-200/70 hover:text-white" title="Log out">
-            <LogOut size={16} />
-          </button>
+
+      {/* Footer */}
+      <div style={{ padding:"14px 16px", borderTop:"1px solid rgba(255,255,255,0.1)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div>
+          <p style={{ fontSize:13, fontWeight:500 }}>{profile?.name||"..."}</p>
+          <p style={{ fontSize:10, fontFamily:"monospace", color:"rgba(255,255,255,0.45)", textTransform:"uppercase" }}>{profile?.role||"staff"}</p>
         </div>
+        <button onClick={logout} title="Log out" style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.5)", padding:4 }}>
+          <LogOut size={16}/>
+        </button>
       </div>
     </aside>
   );
