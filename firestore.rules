@@ -14,31 +14,38 @@ service cloud.firestore {
       allow update: if isSignedIn() && (request.auth.uid == uid || isAdmin());
       allow delete: if isAdmin();
     }
+
     match /medicines/{id} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
       allow delete: if isAdmin();
     }
+
     match /sales/{id} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
     }
+
     match /suppliers/{id} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
       allow delete: if isAdmin();
     }
+
     match /purchases/{id} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
+
     match /returns/{id} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
+
     match /credits/{id} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
