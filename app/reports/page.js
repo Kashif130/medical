@@ -3,140 +3,149 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { watchSales } from "@/lib/firebase";
+import { watchSales, watchReturns } from "@/lib/firebase";
 
-function dayKey(date) {
-  return date.toISOString().slice(0, 10);
-}
-function monthKey(date) {
-  return date.toISOString().slice(0, 7);
-}
+function dayKey(date) { return date.toISOString().slice(0, 10); }
 
 export default function ReportsPage() {
   const { isAdmin, loading } = useAuth();
   const router = useRouter();
-  const [sales, setSales] = useState([]);
-  const [range, setRange] = useState("30"); // days
+  const [sales,   setSales]   = useState([]);
+  const [returns, setReturns] = useState([]);
+  const [range,   setRange]   = useState("30");
 
-  useEffect(() => {
-    if (!loading && !isAdmin) router.push("/");
-  }, [loading, isAdmin, router]);
-
-  useEffect(() => watchSales(setSales), []);
+  useEffect(() => { if (!loading && !isAdmin) router.push("/"); }, [loading, isAdmin, router]);
+  useEffect(() => watchSales(setSales),     []);
+  useEffect(() => watchReturns(setReturns), []);
 
   const computed = useMemo(() => {
-    const cutoff = Date.now() - Number(range) * 24 * 60 * 60 * 1000;
-    const filtered = sales.filter((s) => s.createdAt?.toDate && s.createdAt.toDate().getTime() >= cutoff);
+    const cutoff   = Date.now() - Number(range) * 24 * 60 * 60 * 1000;
+    const filtered = sales.filter(s => s.createdAt?.toDate && s.createdAt.toDate().getTime() >= cutoff);
 
-    let totalRevenue = 0;
-    let totalCost = 0;
-    let totalDiscount = 0;
-    const byDay = {};
-
-    filtered.forEach((s) => {
-      const d = s.createdAt.toDate();
-      const key = dayKey(d);
-      const revenue = s.total || 0;
-      const cost = (s.items || []).reduce((sum, i) => sum + (i.costPrice || 0) * i.qty, 0);
-      totalRevenue += revenue;
-      totalCost += cost;
-      totalDiscount += s.discount || 0;
-      if (!byDay[key]) byDay[key] = { revenue: 0, cost: 0, bills: 0 };
-      byDay[key].revenue += revenue;
-      byDay[key].cost += cost;
-      byDay[key].bills += 1;
+    // Return amounts indexed by saleId for fast lookup
+    const returnBySale = {};
+    returns.forEach(r => {
+      if (r.saleId) returnBySale[r.saleId] = (returnBySale[r.saleId]||0) + (r.refundAmount||0);
     });
 
+    // Total returns in range (using return createdAt)
+    const returnsInRange = returns.filter(r => r.createdAt?.toDate && r.createdAt.toDate().getTime() >= cutoff);
+    const totalReturned  = returnsInRange.reduce((s,r) => s + (r.refundAmount||0), 0);
+
+    let grossRevenue = 0;
+    let totalCost    = 0;
+    let totalDiscount= 0;
+    const byDay = {};
+
+    filtered.forEach(s => {
+      const d         = s.createdAt.toDate();
+      const key       = dayKey(d);
+      const revenue   = s.total || 0;
+      const returned  = s.returnedAmount || 0; // already stored on sale doc
+      const net       = revenue - returned;
+      const cost      = (s.items||[]).reduce((sum,i) => sum + (i.costPrice||0)*i.qty, 0);
+
+      grossRevenue  += revenue;
+      totalCost     += cost;
+      totalDiscount += (s.flatDiscount||s.discount||0);
+
+      if (!byDay[key]) byDay[key] = { grossRevenue:0, returned:0, netRevenue:0, cost:0, bills:0 };
+      byDay[key].grossRevenue += revenue;
+      byDay[key].returned     += returned;
+      byDay[key].netRevenue   += net;
+      byDay[key].cost         += cost;
+      byDay[key].bills        += 1;
+    });
+
+    const netRevenue = grossRevenue - totalReturned;
+
     const rows = Object.entries(byDay)
-      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-      .map(([date, v]) => ({ date, ...v, profit: v.revenue - v.cost }));
+      .sort((a,b) => a[0]<b[0]?1:-1)
+      .map(([date,v]) => ({ date, ...v, profit: v.netRevenue - v.cost }));
 
     return {
-      totalRevenue,
-      totalCost,
-      totalDiscount,
-      totalProfit: totalRevenue - totalCost,
+      grossRevenue, totalReturned, netRevenue,
+      totalCost, totalDiscount,
+      netProfit: netRevenue - totalCost,
       billCount: filtered.length,
+      returnCount: returnsInRange.length,
       rows,
     };
-  }, [sales, range]);
+  }, [sales, returns, range]);
 
   if (!isAdmin) return null;
 
   return (
-    <div className="p-8 max-w-5xl">
-      <header className="mb-6 flex items-end justify-between">
+    <div style={{ padding:32, maxWidth:900 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:24, flexWrap:"wrap", gap:12 }}>
         <div>
-          <h1 className="text-xl font-display font-semibold">Reports</h1>
-          <p className="text-sm text-gray-500 mt-1">Partners ke liye revenue, cost aur profit ka breakdown</p>
+          <h1 style={{ fontSize:18, fontWeight:700 }}>Reports</h1>
+          <p style={{ fontSize:13, color:"#6b7280", marginTop:4 }}>Revenue, returns, cost aur net profit</p>
         </div>
-        <select
-          value={range}
-          onChange={(e) => setRange(e.target.value)}
-          className="text-sm border border-clinic-line rounded-clinic px-3 py-2 bg-white"
-        >
+        <select value={range} onChange={e=>setRange(e.target.value)}
+          style={{ fontSize:13, border:"1px solid #dce6e2", borderRadius:8, padding:"7px 12px", background:"white", outline:"none" }}>
           <option value="7">Last 7 days</option>
           <option value="30">Last 30 days</option>
           <option value="90">Last 90 days</option>
         </select>
-      </header>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Stat label="Revenue" value={`Rs. ${computed.totalRevenue.toFixed(0)}`} />
-        <Stat label="Cost (COGS)" value={`Rs. ${computed.totalCost.toFixed(0)}`} />
-        <Stat label="Net Profit" value={`Rs. ${computed.totalProfit.toFixed(0)}`} tone="profit" />
-        <Stat label="Bills" value={computed.billCount} />
       </div>
 
-      <div className="bg-clinic-panel border border-clinic-line rounded-clinic overflow-hidden">
-        <table className="w-full text-sm">
+      {/* Summary cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(160px,1fr))", gap:12, marginBottom:28 }}>
+        <Stat label="Gross Revenue"   value={`Rs. ${computed.grossRevenue.toFixed(0)}`}  sub={`${computed.billCount} bills`}/>
+        <Stat label="Returns"         value={`− Rs. ${computed.totalReturned.toFixed(0)}`} sub={`${computed.returnCount} returns`} red/>
+        <Stat label="Net Revenue"     value={`Rs. ${computed.netRevenue.toFixed(0)}`}    teal/>
+        <Stat label="Cost (COGS)"     value={`Rs. ${computed.totalCost.toFixed(0)}`}     sub="purchase cost"/>
+        <Stat label="Net Profit"      value={`Rs. ${computed.netProfit.toFixed(0)}`}     teal bold/>
+        <Stat label="Discounts given" value={`Rs. ${computed.totalDiscount.toFixed(0)}`} sub="flat disc total"/>
+      </div>
+
+      {/* Daily table */}
+      <div style={{ background:"white", border:"1px solid #dce6e2", borderRadius:12, overflow:"hidden" }}>
+        <table style={{ width:"100%", fontSize:13, borderCollapse:"collapse" }}>
           <thead>
-            <tr className="border-b border-clinic-line text-left text-xs uppercase text-gray-500 font-mono">
-              <th className="px-5 py-3">Date</th>
-              <th className="px-3 py-3">Bills</th>
-              <th className="px-3 py-3">Revenue</th>
-              <th className="px-3 py-3">Cost</th>
-              <th className="px-3 py-3 text-right">Profit</th>
+            <tr style={{ borderBottom:"1px solid #dce6e2" }}>
+              {["Date","Bills","Gross","Returns","Net Revenue","Cost","Profit"].map(h=>(
+                <th key={h} style={{ padding:"9px 12px", textAlign:["Gross","Returns","Net Revenue","Cost","Profit"].includes(h)?"right":"left", fontSize:11, fontFamily:"monospace", color:"#6b7280", textTransform:"uppercase", fontWeight:500 }}>{h}</th>
+              ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-clinic-line">
-            {computed.rows.map((r) => (
-              <tr key={r.date}>
-                <td className="px-5 py-3 font-mono text-xs">{r.date}</td>
-                <td className="px-3 py-3">{r.bills}</td>
-                <td className="px-3 py-3 font-mono">Rs. {r.revenue.toFixed(0)}</td>
-                <td className="px-3 py-3 font-mono text-gray-500">Rs. {r.cost.toFixed(0)}</td>
-                <td className="px-3 py-3 text-right font-mono font-semibold text-clinic-teal">
+          <tbody>
+            {computed.rows.map(r=>(
+              <tr key={r.date} style={{ borderBottom:"1px solid #f0f4f2" }}>
+                <td style={{ padding:"9px 12px", fontFamily:"monospace", fontSize:12 }}>{r.date}</td>
+                <td style={{ padding:"9px 12px" }}>{r.bills}</td>
+                <td style={{ padding:"9px 12px", textAlign:"right", fontFamily:"monospace" }}>Rs. {r.grossRevenue.toFixed(0)}</td>
+                <td style={{ padding:"9px 12px", textAlign:"right", fontFamily:"monospace", color: r.returned>0?"#dc2626":"#9ca3af" }}>
+                  {r.returned>0 ? `− Rs. ${r.returned.toFixed(0)}` : "—"}
+                </td>
+                <td style={{ padding:"9px 12px", textAlign:"right", fontFamily:"monospace", fontWeight:600 }}>Rs. {r.netRevenue.toFixed(0)}</td>
+                <td style={{ padding:"9px 12px", textAlign:"right", fontFamily:"monospace", color:"#6b7280" }}>Rs. {r.cost.toFixed(0)}</td>
+                <td style={{ padding:"9px 12px", textAlign:"right", fontFamily:"monospace", fontWeight:700, color: r.profit>=0?"#0e6e5c":"#dc2626" }}>
                   Rs. {r.profit.toFixed(0)}
                 </td>
               </tr>
             ))}
-            {computed.rows.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-5 py-10 text-center text-gray-400 text-sm">
-                  Is range mein koi sale nahi hui.
-                </td>
-              </tr>
+            {computed.rows.length===0 && (
+              <tr><td colSpan={7} style={{ padding:"40px", textAlign:"center", color:"#9ca3af", fontSize:13 }}>Is range mein koi sale nahi hui.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      <p className="text-xs text-gray-400 mt-3">
-        Note: profit calculation har medicine ke "Cost price" field par depend karta hai. Inventory mein cost price
-        zaroor bharein taake yeh numbers sahi aayein.
+      <p style={{ fontSize:12, color:"#9ca3af", marginTop:12 }}>
+        * Net Profit = Net Revenue − COGS. Sahi results ke liye inventory mein har medicine ka cost price zaroor bharen.
       </p>
     </div>
   );
 }
 
-function Stat({ label, value, tone }) {
+function Stat({ label, value, sub, red, teal, bold }) {
   return (
-    <div className="bg-clinic-panel border border-clinic-line rounded-clinic p-5">
-      <p className="text-xs font-mono text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className={`text-2xl font-display font-semibold mt-1 ${tone === "profit" ? "text-clinic-teal" : ""}`}>
-        {value}
-      </p>
+    <div style={{ background:"white", border:"1px solid #dce6e2", borderRadius:12, padding:"14px 16px" }}>
+      <p style={{ fontSize:11, fontFamily:"monospace", color:"#9ca3af", textTransform:"uppercase", marginBottom:4 }}>{label}</p>
+      <p style={{ fontSize:20, fontWeight: bold?800:700, color: red?"#dc2626": teal?"#0e6e5c":"#111" }}>{value}</p>
+      {sub && <p style={{ fontSize:11, color:"#9ca3af", marginTop:2 }}>{sub}</p>}
     </div>
   );
 }
