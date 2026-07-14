@@ -5,8 +5,8 @@ import { watchSales, watchReturns } from "@/lib/firebase";
 import { Printer, ChevronDown, ChevronUp, X, RotateCcw, Search } from "lucide-react";
 
 const STORE_NAME  = "Umer Din Medical Store";
-const STORE_ADDR  = "Apna address yahan likho";
-const STORE_PHONE = "03XX-XXXXXXX";
+const STORE_ADDR  = "Chak No.128/9L, Near Govt Girls High School";
+const STORE_PHONE = "03116126145";
 
 const PERIODS = [
   { key:"today",   label:"Aaj" },
@@ -25,16 +25,23 @@ function startOf(period) {
   return null;
 }
 
+function buildQrData(sale) {
+  const date = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date();
+  const inv  = (sale.id||"").slice(-8).toUpperCase();
+  return `${STORE_NAME}\nInvoice #${inv}\nDate: ${date.toLocaleDateString("en-PK")}\nTotal: Rs.${Math.round(sale.total||0)}`;
+}
+
 // ── Receipt modal ─────────────────────────────────────────
 function ReceiptModal({ sale, onClose }) {
   if (!sale) return null;
   const date        = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date();
   const subtotal    = sale.subtotal    ?? sale.total ?? 0;
-  const flatDiscount= sale.flatDiscount ?? 0;
+  const totalDiscount = sale.totalDiscount ?? 0;
   const miscCharges = sale.miscCharges  ?? 0;
   const gstAmount   = sale.gstAmount   ?? 0;
   const total       = sale.total       ?? 0;
   const returned    = sale.returnedAmount ?? 0;
+  const qrSrc       = `https://chart.googleapis.com/chart?chs=100x100&cht=qr&chl=${encodeURIComponent(buildQrData(sale))}&choe=UTF-8`;
 
   return (
     <>
@@ -69,23 +76,29 @@ function ReceiptModal({ sale, onClose }) {
                 <th style={{ textAlign:"left", paddingBottom:4, fontSize:10 }}>Item</th>
                 <th style={{ textAlign:"center", paddingBottom:4, fontSize:10 }}>Qty</th>
                 <th style={{ textAlign:"right", paddingBottom:4, fontSize:10 }}>Rate</th>
+                <th style={{ textAlign:"right", paddingBottom:4, fontSize:10 }}>Disc</th>
                 <th style={{ textAlign:"right", paddingBottom:4, fontSize:10 }}>Amt</th>
               </tr></thead>
               <tbody>
-                {(sale.items||[]).map((item,i)=>(
-                  <tr key={i}>
-                    <td style={{ paddingBottom:2, wordBreak:"break-word" }}>{item.name}</td>
-                    <td style={{ textAlign:"center" }}>{item.qty}</td>
-                    <td style={{ textAlign:"right" }}>{item.price}</td>
-                    <td style={{ textAlign:"right", fontWeight:600 }}>{(item.price*item.qty).toFixed(0)}</td>
-                  </tr>
-                ))}
+                {(sale.items||[]).map((item,i)=>{
+                  const disc    = Number(item.discount||0);
+                  const netUnit = Math.max(0, item.price - disc);
+                  return (
+                    <tr key={i}>
+                      <td style={{ paddingBottom:2, wordBreak:"break-word" }}>{item.name}</td>
+                      <td style={{ textAlign:"center" }}>{item.qty}</td>
+                      <td style={{ textAlign:"right" }}>{item.price}</td>
+                      <td style={{ textAlign:"right", color:disc>0?"#dc2626":"#9ca3af" }}>{disc>0?disc.toFixed(0):"-"}</td>
+                      <td style={{ textAlign:"right", fontWeight:600 }}>{(netUnit*item.qty).toFixed(0)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             <div style={{ borderTop:"1px dashed #999", margin:"8px 0" }}/>
             <div style={{ display:"flex", flexDirection:"column", gap:2, fontSize:12 }}>
               <div style={{ display:"flex", justifyContent:"space-between" }}><span>Subtotal</span><span>Rs. {subtotal.toFixed(0)}</span></div>
-              {flatDiscount>0 && <div style={{ display:"flex", justifyContent:"space-between", color:"#dc2626" }}><span>Discount</span><span>− Rs. {flatDiscount.toFixed(0)}</span></div>}
+              {totalDiscount>0 && <div style={{ display:"flex", justifyContent:"space-between", color:"#dc2626" }}><span>Total Discount</span><span>− Rs. {totalDiscount.toFixed(0)}</span></div>}
               {gstAmount>0    && <div style={{ display:"flex", justifyContent:"space-between" }}><span>GST 17%</span><span>Rs. {gstAmount.toFixed(0)}</span></div>}
               {miscCharges>0  && <div style={{ display:"flex", justifyContent:"space-between" }}><span>Misc</span><span>Rs. {miscCharges.toFixed(0)}</span></div>}
               <div style={{ display:"flex", justifyContent:"space-between", fontWeight:700, fontSize:14, borderTop:"1px solid #ccc", paddingTop:4, marginTop:4 }}>
@@ -95,6 +108,11 @@ function ReceiptModal({ sale, onClose }) {
                 <div style={{ display:"flex", justifyContent:"space-between", color:"#dc2626" }}><span>Returned</span><span>− Rs. {returned.toFixed(0)}</span></div>
                 <div style={{ display:"flex", justifyContent:"space-between", fontWeight:700 }}><span>NET</span><span>Rs. {(total-returned).toFixed(0)}</span></div>
               </>}
+            </div>
+            <div style={{ borderTop:"1px dashed #999", margin:"8px 0" }}/>
+            <div style={{ textAlign:"center" }}>
+              <img src={qrSrc} width={90} height={90} alt="Bill QR"/>
+              <p style={{ fontSize:9, color:"#666", marginTop:3 }}>Scan to verify bill</p>
             </div>
             <div style={{ borderTop:"1px dashed #999", margin:"8px 0" }}/>
             <p style={{ textAlign:"center", fontSize:11, color:"#555" }}>Shukriya! Sehat mand rahein. 🏥</p>
@@ -373,22 +391,28 @@ export default function SalesPage() {
                               <th style={{ textAlign:"left", paddingBottom:4 }}>Medicine</th>
                               <th style={{ textAlign:"center", paddingBottom:4 }}>Qty</th>
                               <th style={{ textAlign:"right", paddingBottom:4 }}>Rate</th>
+                              <th style={{ textAlign:"right", paddingBottom:4 }}>Disc</th>
                               <th style={{ textAlign:"right", paddingBottom:4 }}>Amount</th>
                             </tr></thead>
                             <tbody>
-                              {(s.items||[]).map((item,i)=>(
-                                <tr key={i} style={{ borderTop:"1px solid #e5ede9" }}>
-                                  <td style={{ padding:"4px 0" }}>{item.name}</td>
-                                  <td style={{ textAlign:"center", padding:"4px 0", color:"#6b7280" }}>{item.qty} units</td>
-                                  <td style={{ textAlign:"right", padding:"4px 0", fontFamily:"monospace" }}>Rs. {item.price}</td>
-                                  <td style={{ textAlign:"right", padding:"4px 0", fontFamily:"monospace", fontWeight:600 }}>Rs. {(item.price*item.qty).toFixed(0)}</td>
-                                </tr>
-                              ))}
+                              {(s.items||[]).map((item,i)=>{
+                                const disc    = Number(item.discount||0);
+                                const netUnit = Math.max(0, item.price - disc);
+                                return (
+                                  <tr key={i} style={{ borderTop:"1px solid #e5ede9" }}>
+                                    <td style={{ padding:"4px 0" }}>{item.name}</td>
+                                    <td style={{ textAlign:"center", padding:"4px 0", color:"#6b7280" }}>{item.qty} units</td>
+                                    <td style={{ textAlign:"right", padding:"4px 0", fontFamily:"monospace" }}>Rs. {item.price}</td>
+                                    <td style={{ textAlign:"right", padding:"4px 0", fontFamily:"monospace", color:disc>0?"#dc2626":"#9ca3af" }}>{disc>0?`− ${disc}`:"-"}</td>
+                                    <td style={{ textAlign:"right", padding:"4px 0", fontFamily:"monospace", fontWeight:600 }}>Rs. {(netUnit*item.qty).toFixed(0)}</td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                           <div style={{ display:"flex", gap:16, flexWrap:"wrap", fontSize:12, borderTop:"1px dashed #dce6e2", paddingTop:8 }}>
                             <span style={{ color:"#6b7280" }}>Subtotal: <strong>Rs. {(s.subtotal||s.total||0).toFixed(0)}</strong></span>
-                            {(s.flatDiscount||s.discount||0)>0 && <span style={{ color:"#dc2626" }}>Disc: − Rs. {(s.flatDiscount||s.discount||0).toFixed(0)}</span>}
+                            {(s.totalDiscount||0)>0 && <span style={{ color:"#dc2626" }}>Total Disc: − Rs. {s.totalDiscount.toFixed(0)}</span>}
                             {(s.gstAmount||0)>0 && <span>GST: Rs. {s.gstAmount.toFixed(0)}</span>}
                             {(s.miscCharges||0)>0 && <span>Misc: Rs. {s.miscCharges.toFixed(0)}</span>}
                             <span style={{ fontWeight:700 }}>Total: Rs. {(s.total||0).toFixed(0)}</span>
