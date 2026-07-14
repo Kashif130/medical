@@ -87,12 +87,13 @@ function ReceiptModal({ sale, onClose }) {
                 {(sale.items||[]).map((item,i)=>{
                   const disc    = Number(item.discount||0);
                   const netUnit = Math.max(0, item.price - disc);
+                  const lineDiscTotal = disc*item.qty;
                   return (
                     <tr key={i}>
                       <td style={{ paddingBottom:2, wordBreak:"break-word" }}>{item.name}</td>
                       <td style={{ textAlign:"center" }}>{item.qty}</td>
                       <td style={{ textAlign:"right" }}>{item.price}</td>
-                      <td style={{ textAlign:"right", color:disc>0?"#dc2626":"#9ca3af" }}>{disc>0?disc.toFixed(0):"-"}</td>
+                      <td style={{ textAlign:"right", color:disc>0?"#dc2626":"#9ca3af" }}>{disc>0?lineDiscTotal.toFixed(0):"-"}</td>
                       <td style={{ textAlign:"right", fontWeight:600 }}>{(netUnit*item.qty).toFixed(0)}</td>
                     </tr>
                   );
@@ -402,12 +403,13 @@ export default function SalesPage() {
                               {(s.items||[]).map((item,i)=>{
                                 const disc    = Number(item.discount||0);
                                 const netUnit = Math.max(0, item.price - disc);
+                                const lineDiscTotal = disc*item.qty;
                                 return (
                                   <tr key={i} style={{ borderTop:"1px solid #e5ede9" }}>
                                     <td style={{ padding:"4px 0" }}>{item.name}</td>
                                     <td style={{ textAlign:"center", padding:"4px 0", color:"#6b7280" }}>{item.qty} units</td>
                                     <td style={{ textAlign:"right", padding:"4px 0", fontFamily:"monospace" }}>Rs. {item.price}</td>
-                                    <td style={{ textAlign:"right", padding:"4px 0", fontFamily:"monospace", color:disc>0?"#dc2626":"#9ca3af" }}>{disc>0?`− ${disc}`:"-"}</td>
+                                    <td style={{ textAlign:"right", padding:"4px 0", fontFamily:"monospace", color:disc>0?"#dc2626":"#9ca3af" }}>{disc>0?`− ${lineDiscTotal.toFixed(0)}`:"-"}</td>
                                     <td style={{ textAlign:"right", padding:"4px 0", fontFamily:"monospace", fontWeight:600 }}>Rs. {(netUnit*item.qty).toFixed(0)}</td>
                                   </tr>
                                 );
