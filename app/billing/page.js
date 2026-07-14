@@ -11,43 +11,71 @@ import FBRReceipt from "@/components/FBRReceipt";
 import * as XLSX from "xlsx";
 
 const STORE_NAME  = "Umer Din Medical Store";
-const STORE_ADDR  = "Apna address yahan likho";
-const STORE_PHONE = "03XX-XXXXXXX";
+const STORE_ADDR  = "Chak No.128/9L, Near Govt Girls High School";
+const STORE_PHONE = "03116126145";
 
 // ── Offline queue ─────────────────────────────────────────
 const QUEUE_KEY = "pos_offline_queue";
 function loadQueue()  { try { return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]"); } catch { return []; } }
 function saveQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
 
+// QR data — encodes bill verification info (store, invoice #, date, amount)
+function buildQrData(bill) {
+  const date = bill.date instanceof Date ? bill.date : new Date();
+  const ds   = date.toLocaleDateString("en-PK");
+  const inv  = (bill.id||"").slice(-8).toUpperCase();
+  return `${STORE_NAME}\nInvoice #${inv}\nDate: ${ds}\nTotal: Rs.${Math.round(bill.total||0)}\nPh: ${STORE_PHONE}`;
+}
+function qrImageUrl(data, size=110) {
+  return `https://chart.googleapis.com/chart?chs=${size}x${size}&cht=qr&chl=${encodeURIComponent(data)}&choe=UTF-8`;
+}
+
 // ── Regular print receipt ─────────────────────────────────
 function printReceipt(bill) {
-  const w = window.open("","_blank","width=400,height=600");
+  const w = window.open("","_blank","width=400,height=650");
+  const qrSrc = qrImageUrl(buildQrData(bill), 110);
   w.document.write(`<html><head><title>Receipt</title>
   <style>body{font-family:'Courier New',monospace;font-size:12px;margin:0;padding:16px;width:280px;}
   h2{font-size:14px;text-align:center;margin:0 0 4px;}.center{text-align:center;}
   .row{display:flex;justify-content:space-between;padding:2px 0;}.divider{border-top:1px dashed #999;margin:6px 0;}
-  .bold{font-weight:700;}.total{font-size:14px;font-weight:700;}</style></head><body>
+  .bold{font-weight:700;}.total{font-size:14px;font-weight:700;}
+  .itemrow{padding:3px 0;}
+  .itemname{font-weight:600;}
+  .itemsub{display:flex;justify-content:space-between;font-size:10.5px;color:#444;}
+  .discline{color:#c1121f;font-size:10.5px;}
+  .qrwrap{text-align:center;margin-top:8px;}
+  </style></head><body>
   <h2>${STORE_NAME}</h2>
-  <p class="center" style="font-size:10px;margin:0 0 8px;">${STORE_ADDR}<br/>${STORE_PHONE}</p>
+  <p class="center" style="font-size:10px;margin:0 0 8px;">${STORE_ADDR}<br/>Ph: ${STORE_PHONE}</p>
   <div class="divider"></div>
   <div class="row"><span>${bill.date.toLocaleDateString("en-PK")} ${bill.date.toLocaleTimeString("en-PK",{hour:"2-digit",minute:"2-digit"})}</span><span>Bill #${(bill.id||"").slice(-6).toUpperCase()}</span></div>
   <div class="row"><span>Customer: ${bill.customerName||"Walk-in"}</span><span>${bill.paymentMethod}</span></div>
   ${bill.soldBy?`<div style="font-size:10px;color:#555;">Sold by: ${bill.soldBy}</div>`:""}
   <div class="divider"></div>
-  <div class="row bold"><span>Item</span><span>Qty</span><span>Rate</span><span>Amt</span></div>
-  ${(bill.items||[]).map(i=>`<div class="row"><span style="max-width:110px;overflow:hidden">${i.name}</span><span>${i.qty}</span><span>${i.price}</span><span>${(i.price*i.qty).toFixed(0)}</span></div>`).join("")}
+  <div class="row bold"><span>Item</span><span>Amt</span></div>
+  ${(bill.items||[]).map(i=>{
+    const disc = Number(i.discount||0);
+    const net  = Math.max(0, i.price - disc);
+    return `<div class="itemrow">
+      <div class="row"><span class="itemname">${i.name}</span><span>${(net*i.qty).toFixed(0)}</span></div>
+      <div class="itemsub"><span>${i.qty} x Rs.${i.price}${disc>0?` (− Rs.${disc}/unit)`:""}</span><span></span></div>
+      ${disc>0?`<div class="discline">Discount: − Rs. ${(disc*i.qty).toFixed(0)}</div>`:""}
+    </div>`;
+  }).join("")}
   <div class="divider"></div>
   <div class="row"><span>Subtotal</span><span>Rs. ${(bill.subtotal||0).toFixed(0)}</span></div>
-  ${(bill.flatDiscount||0)>0?`<div class="row"><span>Discount</span><span style="color:red">- Rs. ${bill.flatDiscount.toFixed(0)}</span></div>`:""}
+  ${(bill.totalDiscount||0)>0?`<div class="row"><span>Total Discount</span><span style="color:red">- Rs. ${bill.totalDiscount.toFixed(0)}</span></div>`:""}
   ${(bill.gstAmount||0)>0?`<div class="row"><span>GST (17%)</span><span>Rs. ${bill.gstAmount.toFixed(0)}</span></div>`:""}
   ${(bill.miscCharges||0)>0?`<div class="row"><span>Misc</span><span>Rs. ${bill.miscCharges.toFixed(0)}</span></div>`:""}
   <div class="divider"></div>
   <div class="row total"><span>GRAND TOTAL</span><span>Rs. ${(bill.total||0).toFixed(0)}</span></div>
   <div class="divider"></div>
+  <div class="qrwrap"><img src="${qrSrc}" width="110" height="110"/><p style="font-size:9px;color:#555;margin-top:3px;">Scan to verify bill</p></div>
+  <div class="divider"></div>
   <p class="center" style="margin-top:8px;font-size:11px;">Shukriya! Sehat mand rahein. 🏥<br/>${STORE_PHONE}</p>
   </body></html>`);
   w.document.close();
-  setTimeout(()=>{w.print();w.close();},400);
+  setTimeout(()=>{w.print();w.close();},600);
 }
 
 export default function BillingPage() {
@@ -57,7 +85,6 @@ export default function BillingPage() {
   const [cart, setCart]                 = useState([]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [flatDiscount, setFlatDiscount] = useState(0);
   const [miscCharges, setMiscCharges]   = useState(0);
   const [applyGst, setApplyGst]         = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Cash");
@@ -144,23 +171,37 @@ export default function BillingPage() {
     setCart(prev => {
       const ex = prev.find(i=>i.id===med.id);
       if (ex) return prev.map(i=>i.id===med.id?{...i,qty:Math.min(i.maxStock,i.qty+1)}:i);
-      return [...prev,{id:med.id,name:med.name,price:med.price,costPrice:med.costPrice||0,qty:1,maxStock:med.stock}];
+      return [...prev,{id:med.id,name:med.name,price:med.price,costPrice:med.costPrice||0,qty:1,discount:0,maxStock:med.stock}];
     });
     setSearch("");
   }
   function changeQty(id,delta) { setCart(prev=>prev.map(i=>i.id===id?{...i,qty:Math.max(1,Math.min(i.maxStock,i.qty+delta))}:i)); }
+  function changeDiscount(id,val) {
+    setCart(prev=>prev.map(i=>{
+      if (i.id!==id) return i;
+      const d = Math.max(0, Math.min(i.price, Number(val)||0)); // clamp 0..price
+      return {...i, discount:d};
+    }));
+  }
   function removeItem(id) { setCart(prev=>prev.filter(i=>i.id!==id)); }
 
-  const subtotal  = cart.reduce((s,i)=>s+i.price*i.qty,0);
-  const afterDisc = Math.max(0,subtotal-Number(flatDiscount||0));
-  const gstAmount = applyGst?Math.round(afterDisc*GST_RATE):0;
-  const total     = Math.max(0,afterDisc+gstAmount+Number(miscCharges||0));
+  // Per-item discount math
+  const subtotal      = cart.reduce((s,i)=>s+i.price*i.qty,0);
+  const totalDiscount = cart.reduce((s,i)=>s+(Number(i.discount)||0)*i.qty,0);
+  const afterDisc      = Math.max(0, subtotal - totalDiscount);
+  const gstAmount      = applyGst ? Math.round(afterDisc*GST_RATE) : 0;
+  const total          = Math.max(0, afterDisc + gstAmount + Number(miscCharges||0));
 
   // WhatsApp receipt
   function sendWhatsAppReceipt(bill) {
     if (!bill.customerPhone) { alert("Customer phone number nahi hai."); return; }
-    const itemLines=(bill.items||[]).map(i=>`• ${i.name} x${i.qty} = Rs.${(i.price*i.qty).toFixed(0)}`).join("\n");
-    const msg=`🏥 *${STORE_NAME}*\n📍 ${STORE_ADDR}\n\n*Bill Receipt*\nDate: ${bill.date.toLocaleDateString("en-PK")}\nCustomer: ${bill.customerName||"Walk-in"}\n\n${itemLines}\n${bill.flatDiscount>0?`\nDiscount: - Rs.${bill.flatDiscount.toFixed(0)}`:""}${bill.gstAmount>0?`\nGST: Rs.${bill.gstAmount.toFixed(0)}`:""}${bill.miscCharges>0?`\nMisc: Rs.${bill.miscCharges.toFixed(0)}`:""}\n\n*Total: Rs.${bill.total.toFixed(0)}*\nPayment: ${bill.paymentMethod}\n\nShukriya! 🙏\n${STORE_PHONE}`;
+    const itemLines=(bill.items||[]).map(i=>{
+      const disc = Number(i.discount||0);
+      const net  = Math.max(0, i.price - disc);
+      const line = `• ${i.name} x${i.qty} = Rs.${(net*i.qty).toFixed(0)}`;
+      return disc>0 ? `${line} (disc: −Rs.${disc}/unit)` : line;
+    }).join("\n");
+    const msg=`🏥 *${STORE_NAME}*\n📍 ${STORE_ADDR}\n\n*Bill Receipt*\nDate: ${bill.date.toLocaleDateString("en-PK")}\nCustomer: ${bill.customerName||"Walk-in"}\n\n${itemLines}\n${bill.totalDiscount>0?`\nTotal Discount: - Rs.${bill.totalDiscount.toFixed(0)}`:""}${bill.gstAmount>0?`\nGST: Rs.${bill.gstAmount.toFixed(0)}`:""}${bill.miscCharges>0?`\nMisc: Rs.${bill.miscCharges.toFixed(0)}`:""}\n\n*Total: Rs.${bill.total.toFixed(0)}*\nPayment: ${bill.paymentMethod}\n\nShukriya! 🙏\n${STORE_PHONE}`;
     const phone=bill.customerPhone.replace(/\D/g,"");
     window.open(`https://wa.me/92${phone.replace(/^0/,"")}?text=${encodeURIComponent(msg)}`,"_blank");
   }
@@ -192,8 +233,8 @@ export default function BillingPage() {
     if (cart.length===0) return;
     setBusy(true); setError("");
     const salePayload={
-      items:cart.map(({id,name,price,costPrice,qty})=>({id,name,price,costPrice,qty})),
-      customerName,customerPhone,subtotal,flatDiscount:Number(flatDiscount||0),
+      items:cart.map(({id,name,price,costPrice,qty,discount})=>({id,name,price,costPrice,qty,discount:Number(discount)||0})),
+      customerName,customerPhone,subtotal,totalDiscount,
       miscCharges:Number(miscCharges||0),applyGst,total,paymentMethod,
       createdBy:{uid:user?.uid||null,name:profile?.name||"Unknown"},
     };
@@ -209,7 +250,7 @@ export default function BillingPage() {
       }
       const bill={
         id:saleId,date:new Date(),items:cart,
-        subtotal,flatDiscount:Number(flatDiscount||0),
+        subtotal,totalDiscount,
         miscCharges:Number(miscCharges||0),gstAmount,applyGst,total,
         customerName,customerPhone,
         paymentMethod:isCredit?"Udhar (Credit)":paymentMethod,
@@ -217,7 +258,7 @@ export default function BillingPage() {
       };
       setLastBill(bill);
       setCart([]); setCustomerName(""); setCustomerPhone("");
-      setFlatDiscount(0); setMiscCharges(0); setApplyGst(false); setIsCredit(false);
+      setMiscCharges(0); setApplyGst(false); setIsCredit(false);
     } catch(e) { setError(e.message); }
     finally { setBusy(false); }
   }
@@ -299,24 +340,43 @@ export default function BillingPage() {
                 Upar search karo ya barcode scan karo
               </p>
             )}
-            {cart.map(item=>(
-              <div key={item.id} style={{ padding:"10px 14px", borderBottom:"1px solid #f0f4f2",
-                display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:13, fontWeight:500 }}>{item.name}</p>
-                  <p style={{ fontSize:11, color:"#9ca3af", fontFamily:"monospace" }}>Rs. {item.price} each</p>
-                </div>
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <div style={{ display:"flex", alignItems:"center", border:"1px solid #dce6e2", borderRadius:8 }}>
-                    <button onClick={()=>changeQty(item.id,-1)} style={{ padding:"4px 8px", background:"none", border:"none", cursor:"pointer", color:"#6b7280" }}><Minus size={12}/></button>
-                    <span style={{ padding:"0 8px", fontSize:13, fontFamily:"monospace", fontWeight:600 }}>{item.qty}</span>
-                    <button onClick={()=>changeQty(item.id,+1)} style={{ padding:"4px 8px", background:"none", border:"none", cursor:"pointer", color:"#6b7280" }}><Plus size={12}/></button>
+            {cart.map(item=>{
+              const disc    = Number(item.discount)||0;
+              const netUnit = Math.max(0, item.price - disc);
+              return (
+                <div key={item.id} style={{ padding:"10px 14px", borderBottom:"1px solid #f0f4f2" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:13, fontWeight:500 }}>{item.name}</p>
+                      <p style={{ fontSize:11, color:"#9ca3af", fontFamily:"monospace" }}>
+                        Rs. {item.price} each{disc>0 && <span style={{ color:"#dc2626" }}> · − Rs.{disc}/unit</span>}
+                      </p>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                      <div style={{ display:"flex", alignItems:"center", border:"1px solid #dce6e2", borderRadius:8 }}>
+                        <button onClick={()=>changeQty(item.id,-1)} style={{ padding:"4px 8px", background:"none", border:"none", cursor:"pointer", color:"#6b7280" }}><Minus size={12}/></button>
+                        <span style={{ padding:"0 8px", fontSize:13, fontFamily:"monospace", fontWeight:600 }}>{item.qty}</span>
+                        <button onClick={()=>changeQty(item.id,+1)} style={{ padding:"4px 8px", background:"none", border:"none", cursor:"pointer", color:"#6b7280" }}><Plus size={12}/></button>
+                      </div>
+                      <span style={{ fontSize:13, fontFamily:"monospace", fontWeight:600, minWidth:60, textAlign:"right" }}>Rs. {(netUnit*item.qty).toFixed(0)}</span>
+                      <button onClick={()=>removeItem(item.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#9ca3af" }}><Trash2 size={14}/></button>
+                    </div>
                   </div>
-                  <span style={{ fontSize:13, fontFamily:"monospace", fontWeight:600, minWidth:60, textAlign:"right" }}>Rs. {(item.price*item.qty).toFixed(0)}</span>
-                  <button onClick={()=>removeItem(item.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#9ca3af" }}><Trash2 size={14}/></button>
+                  {/* Per-unit discount input */}
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+                    <span style={{ fontSize:11, color:"#6b7280", fontFamily:"monospace", textTransform:"uppercase", whiteSpace:"nowrap" }}>Disc/unit (Rs.)</span>
+                    <input type="number" min={0} max={item.price} value={item.discount}
+                      onChange={e=>changeDiscount(item.id, e.target.value)}
+                      style={{ width:80, fontSize:12, padding:"4px 8px", border:"1px solid #dce6e2", borderRadius:6, outline:"none" }}/>
+                    {disc>0 && (
+                      <span style={{ fontSize:11, color:"#dc2626", fontFamily:"monospace" }}>
+                        Line disc: − Rs. {(disc*item.qty).toFixed(0)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Success bar */}
@@ -360,7 +420,6 @@ export default function BillingPage() {
 
             <F label="Customer name"><input value={customerName} onChange={e=>setCustomerName(e.target.value)} style={inp}/></F>
             <F label="Phone (WhatsApp receipt)"><input value={customerPhone} onChange={e=>setCustomerPhone(e.target.value)} placeholder="03XX-XXXXXXX" style={inp}/></F>
-            <F label="Flat Discount (Rs.)"><input type="number" min={0} value={flatDiscount} onChange={e=>setFlatDiscount(e.target.value)} style={inp}/></F>
             <F label="Misc charges (Rs.)"><input type="number" min={0} value={miscCharges} onChange={e=>setMiscCharges(e.target.value)} style={inp}/></F>
             <F label="Payment method">
               <select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)} style={inp}>
@@ -376,7 +435,7 @@ export default function BillingPage() {
             {/* Totals */}
             <div style={{ borderTop:"1px solid #f0f4f2", paddingTop:10, display:"flex", flexDirection:"column", gap:4, fontSize:13, marginBottom:12 }}>
               <Row label="Subtotal"  val={`Rs. ${subtotal.toFixed(0)}`}/>
-              {Number(flatDiscount)>0 && <Row label="Disc (−)" val={`− Rs. ${Number(flatDiscount).toFixed(0)}`} red/>}
+              {totalDiscount>0 && <Row label="Total Discount (−)" val={`− Rs. ${totalDiscount.toFixed(0)}`} red/>}
               {applyGst             && <Row label="GST (17%)"  val={`+ Rs. ${gstAmount.toFixed(0)}`}/>}
               {Number(miscCharges)>0 && <Row label="Misc (+)"  val={`+ Rs. ${Number(miscCharges).toFixed(0)}`}/>}
               <div style={{ display:"flex", justifyContent:"space-between", fontWeight:700, fontSize:15, borderTop:"1px solid #dce6e2", paddingTop:8, marginTop:4 }}>
