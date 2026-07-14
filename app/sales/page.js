@@ -36,7 +36,11 @@ function ReceiptModal({ sale, onClose }) {
   if (!sale) return null;
   const date        = sale.createdAt?.toDate ? sale.createdAt.toDate() : new Date();
   const subtotal    = sale.subtotal    ?? sale.total ?? 0;
-  const totalDiscount = sale.totalDiscount ?? 0;
+  // Fallback: older/partial records may be missing the saved totalDiscount
+  // field even though each item carries its own per-unit discount — in that
+  // case, derive it directly from the items so the receipt is never wrong.
+  const itemsDiscount = (sale.items||[]).reduce((s,i)=>s+(Number(i.discount)||0)*(i.qty||0), 0);
+  const totalDiscount = (sale.totalDiscount && sale.totalDiscount > 0) ? sale.totalDiscount : itemsDiscount;
   const miscCharges = sale.miscCharges  ?? 0;
   const gstAmount   = sale.gstAmount   ?? 0;
   const total       = sale.total       ?? 0;
@@ -412,7 +416,11 @@ export default function SalesPage() {
                           </table>
                           <div style={{ display:"flex", gap:16, flexWrap:"wrap", fontSize:12, borderTop:"1px dashed #dce6e2", paddingTop:8 }}>
                             <span style={{ color:"#6b7280" }}>Subtotal: <strong>Rs. {(s.subtotal||s.total||0).toFixed(0)}</strong></span>
-                            {(s.totalDiscount||0)>0 && <span style={{ color:"#dc2626" }}>Total Disc: − Rs. {s.totalDiscount.toFixed(0)}</span>}
+                            {(() => {
+                              const itemsDisc = (s.items||[]).reduce((sum,i)=>sum+(Number(i.discount)||0)*(i.qty||0), 0);
+                              const disc = (s.totalDiscount && s.totalDiscount > 0) ? s.totalDiscount : itemsDisc;
+                              return disc>0 && <span style={{ color:"#dc2626" }}>Total Disc: − Rs. {disc.toFixed(0)}</span>;
+                            })()}
                             {(s.gstAmount||0)>0 && <span>GST: Rs. {s.gstAmount.toFixed(0)}</span>}
                             {(s.miscCharges||0)>0 && <span>Misc: Rs. {s.miscCharges.toFixed(0)}</span>}
                             <span style={{ fontWeight:700 }}>Total: Rs. {(s.total||0).toFixed(0)}</span>
