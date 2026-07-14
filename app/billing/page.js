@@ -34,6 +34,8 @@ function qrImageUrl(data, size=110) {
 function printReceipt(bill) {
   const w = window.open("","_blank","width=400,height=650");
   const qrSrc = qrImageUrl(buildQrData(bill), 110);
+  const itemsDiscount = (bill.items||[]).reduce((s,i)=>s+(Number(i.discount)||0)*(i.qty||0), 0);
+  const totalDiscount = (bill.totalDiscount && bill.totalDiscount > 0) ? bill.totalDiscount : itemsDiscount;
   w.document.write(`<html><head><title>Receipt</title>
   <style>body{font-family:'Courier New',monospace;font-size:12px;margin:0;padding:16px;width:280px;}
   h2{font-size:14px;text-align:center;margin:0 0 4px;}.center{text-align:center;}
@@ -64,7 +66,7 @@ function printReceipt(bill) {
   }).join("")}
   <div class="divider"></div>
   <div class="row"><span>Subtotal</span><span>Rs. ${(bill.subtotal||0).toFixed(0)}</span></div>
-  ${(bill.totalDiscount||0)>0?`<div class="row"><span>Total Discount</span><span style="color:red">- Rs. ${bill.totalDiscount.toFixed(0)}</span></div>`:""}
+  ${(totalDiscount||0)>0?`<div class="row"><span>Total Discount</span><span style="color:red">- Rs. ${totalDiscount.toFixed(0)}</span></div>`:""}
   ${(bill.gstAmount||0)>0?`<div class="row"><span>GST (17%)</span><span>Rs. ${bill.gstAmount.toFixed(0)}</span></div>`:""}
   ${(bill.miscCharges||0)>0?`<div class="row"><span>Misc</span><span>Rs. ${bill.miscCharges.toFixed(0)}</span></div>`:""}
   <div class="divider"></div>
