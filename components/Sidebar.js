@@ -6,12 +6,13 @@ import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, Boxes, ShoppingCart, Receipt, Cross,
   Users, BarChart3, LogOut, Truck, PackagePlus,
-  RotateCcw, CreditCard, AlertTriangle, TrendingUp, Clock,
+  RotateCcw, CreditCard, AlertTriangle, TrendingUp, Clock, Stethoscope,
 } from "lucide-react";
 
 const NAV = [
   { href:"/",                   label:"Dashboard",        icon:LayoutDashboard },
   { href:"/billing",            label:"Billing",          icon:ShoppingCart },
+  { href:"/practitioner",       label:"Practitioner",     icon:Stethoscope },
   { href:"/inventory",          label:"Inventory",        icon:Boxes },
   { href:"/purchases",          label:"Purchases",        icon:PackagePlus },
   { href:"/suppliers",          label:"Suppliers",        icon:Truck },
