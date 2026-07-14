@@ -14,6 +14,9 @@ export default function Receipt({ bill, storeName = "Umer Din Medical Store", st
 
   const date = bill.date || new Date();
   const qrSrc = `https://chart.googleapis.com/chart?chs=110x110&cht=qr&chl=${encodeURIComponent(buildQrData(bill, storeName))}&choe=UTF-8`;
+  // Fallback: derive discount from items if the bill object doesn't carry a saved totalDiscount
+  const itemsDiscount = (bill.items||[]).reduce((s,i)=>s+(Number(i.discount)||0)*(i.qty||0), 0);
+  const totalDiscount = (bill.totalDiscount && bill.totalDiscount > 0) ? bill.totalDiscount : itemsDiscount;
 
   return (
     <div className="receipt-print hidden">
@@ -73,8 +76,8 @@ export default function Receipt({ bill, storeName = "Umer Din Medical Store", st
 
         <div className="receipt-totals">
           <div><span>Subtotal</span><span>Rs. {(bill.subtotal||0).toFixed(0)}</span></div>
-          {(bill.totalDiscount||0) > 0 && (
-            <div><span>Total Discount</span><span>- Rs. {bill.totalDiscount.toFixed(0)}</span></div>
+          {(totalDiscount||0) > 0 && (
+            <div><span>Total Discount</span><span>- Rs. {totalDiscount.toFixed(0)}</span></div>
           )}
           {(bill.gstAmount||0) > 0 && (
             <div><span>GST (17%)</span><span>Rs. {bill.gstAmount.toFixed(0)}</span></div>
