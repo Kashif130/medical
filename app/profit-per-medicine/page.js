@@ -80,23 +80,53 @@ export default function ProfitPerMedicinePage() {
 
     const map = {};
     filteredSales.forEach(s => {
-      (s.items||[]).forEach(item => {
+      const items = s.items||[];
+      // New sales carry a per-item `discount` (Rs./unit). Old sales (pre per-item
+      // discount) only have a bill-level flatDiscount — prorate that across items
+      // by revenue share so historical data still computes correctly.
+      const hasPerItemDiscount = items.some(item => item.discount != null);
+      const billGross     = items.reduce((g,item)=>g+(item.price*item.qty),0);
+      const billDiscount  = hasPerItemDiscount ? 0 : Number(s.flatDiscount||s.discount||0);
+
+      items.forEach(item => {
         if (!map[item.id]) map[item.id] = {
           id: item.id, name: item.name,
           totalQty: 0, totalRevenue: 0, totalCost: 0,
         };
+        const lineGross = item.price * item.qty;
+        const lineDiscount = hasPerItemDiscount
+          ? (Number(item.discount)||0) * item.qty
+          : (billGross > 0 ? (lineGross / billGross) * billDiscount : 0);
+
         map[item.id].totalQty     += item.qty;
-        map[item.id].totalRevenue += item.price * item.qty;
+        map[item.id].totalRevenue += lineGross - lineDiscount;
         map[item.id].totalCost    += (item.costPrice||0) * item.qty;
       });
     });
 
-    // Deduct returns
+    // Deduct returns. New return records carry each item's own discount;
+    // old records (pre per-item discount) need the original sale's flat
+    // discount prorated across the returned lines.
+    const saleById = {};
+    sales.forEach(s => { saleById[s.id] = s; });
+
     filteredReturns.forEach(r => {
+      const originSale  = saleById[r.saleId];
+      const originItems = originSale?.items || [];
+      const originHasPerItemDiscount = originItems.some(i => i.discount != null);
+      const originGross    = originItems.reduce((g,i)=>g+(i.price*i.qty),0);
+      const originDiscount = originHasPerItemDiscount ? 0 : Number(originSale?.flatDiscount||originSale?.discount||0);
+
       (r.items||[]).forEach(item => {
         if (map[item.id]) {
-          map[item.id].totalRevenue -= (item.price||0) * (item.qty||0);
-          map[item.id].totalCost    -= (item.costPrice||0) * (item.qty||0);
+          const lineGross = (item.price||0) * (item.qty||0);
+          const lineDiscount = item.discount != null
+            ? (Number(item.discount)||0) * (item.qty||0)
+            : (originGross > 0 ? (lineGross / originGross) * originDiscount : 0);
+          const origCostPrice = originItems.find(i=>i.id===item.id)?.costPrice ?? item.costPrice ?? 0;
+
+          map[item.id].totalRevenue -= (lineGross - lineDiscount);
+          map[item.id].totalCost    -= origCostPrice * (item.qty||0);
           map[item.id].totalQty     -= (item.qty||0);
         }
       });
