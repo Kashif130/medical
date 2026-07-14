@@ -1,9 +1,19 @@
 "use client";
 
-export default function Receipt({ bill, storeName = "Umer Din Medical Store", storeAddress = "", storePhone = "" }) {
+const DEFAULT_ADDRESS = "Chak No.128/9L, Near Govt Girls High School";
+const DEFAULT_PHONE   = "03116126145";
+
+function buildQrData(bill, storeName) {
+  const date = bill.date instanceof Date ? bill.date : new Date();
+  const inv  = (bill.id||"").slice(-8).toUpperCase();
+  return `${storeName}\nInvoice #${inv}\nDate: ${date.toLocaleDateString()}\nTotal: Rs.${Math.round(bill.total||0)}`;
+}
+
+export default function Receipt({ bill, storeName = "Umer Din Medical Store", storeAddress = DEFAULT_ADDRESS, storePhone = DEFAULT_PHONE }) {
   if (!bill) return null;
 
   const date = bill.date || new Date();
+  const qrSrc = `https://chart.googleapis.com/chart?chs=110x110&cht=qr&chl=${encodeURIComponent(buildQrData(bill, storeName))}&choe=UTF-8`;
 
   return (
     <div className="receipt-print hidden">
@@ -11,7 +21,7 @@ export default function Receipt({ bill, storeName = "Umer Din Medical Store", st
         <div className="receipt-header">
           <p className="receipt-store">{storeName}</p>
           {storeAddress && <p className="receipt-meta">{storeAddress}</p>}
-          {storePhone && <p className="receipt-meta">{storePhone}</p>}
+          {storePhone && <p className="receipt-meta">Ph: {storePhone}</p>}
         </div>
 
         <div className="receipt-divider" />
@@ -38,29 +48,48 @@ export default function Receipt({ bill, storeName = "Umer Din Medical Store", st
               <th align="left">Item</th>
               <th align="center">Qty</th>
               <th align="right">Price</th>
+              <th align="right">Disc</th>
               <th align="right">Total</th>
             </tr>
           </thead>
           <tbody>
-            {bill.items.map((i) => (
-              <tr key={i.id}>
-                <td>{i.name}</td>
-                <td align="center">{i.qty}</td>
-                <td align="right">{i.price}</td>
-                <td align="right">{(i.price * i.qty).toFixed(0)}</td>
-              </tr>
-            ))}
+            {bill.items.map((i) => {
+              const disc    = Number(i.discount||0);
+              const netUnit = Math.max(0, i.price - disc);
+              return (
+                <tr key={i.id}>
+                  <td>{i.name}</td>
+                  <td align="center">{i.qty}</td>
+                  <td align="right">{i.price}</td>
+                  <td align="right">{disc>0 ? disc.toFixed(0) : "-"}</td>
+                  <td align="right">{(netUnit * i.qty).toFixed(0)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
         <div className="receipt-divider" />
 
         <div className="receipt-totals">
-          <div><span>Subtotal</span><span>Rs. {bill.subtotal.toFixed(0)}</span></div>
-          <div><span>Discount</span><span>- Rs. {bill.discount.toFixed(0)}</span></div>
-          <div className="receipt-grand"><span>Total</span><span>Rs. {bill.total.toFixed(0)}</span></div>
+          <div><span>Subtotal</span><span>Rs. {(bill.subtotal||0).toFixed(0)}</span></div>
+          {(bill.totalDiscount||0) > 0 && (
+            <div><span>Total Discount</span><span>- Rs. {bill.totalDiscount.toFixed(0)}</span></div>
+          )}
+          {(bill.gstAmount||0) > 0 && (
+            <div><span>GST (17%)</span><span>Rs. {bill.gstAmount.toFixed(0)}</span></div>
+          )}
+          {(bill.miscCharges||0) > 0 && (
+            <div><span>Misc</span><span>Rs. {bill.miscCharges.toFixed(0)}</span></div>
+          )}
+          <div className="receipt-grand"><span>Total</span><span>Rs. {(bill.total||0).toFixed(0)}</span></div>
         </div>
 
+        <div className="receipt-divider" />
+        <div className="receipt-qr">
+          <img src={qrSrc} width={90} height={90} alt="Bill QR"/>
+          <p className="receipt-qr-label">Scan to verify bill</p>
+        </div>
         <div className="receipt-divider" />
         <p className="receipt-footer">Shukriya! Sehat mand rahein.</p>
       </div>
@@ -96,6 +125,8 @@ export default function Receipt({ bill, storeName = "Umer Din Medical Store", st
         .receipt-table td { padding: 2px 0; }
         .receipt-totals div { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px; }
         .receipt-grand { font-weight: 700; font-size: 14px; margin-top: 4px; }
+        .receipt-qr { text-align: center; }
+        .receipt-qr-label { font-size: 9px; color: #666; margin-top: 3px; }
         .receipt-footer { text-align: center; font-size: 11px; margin-top: 8px; }
       `}</style>
     </div>
