@@ -44,7 +44,12 @@ export default function ReturnsPage() {
   }
 
   const refundItems  = returnItems.filter(i => i.returnQty > 0);
-  const refundAmount = refundItems.reduce((s, i) => s + i.price * i.returnQty, 0);
+
+  // Each item carries its own per-unit discount, so refund = (price - discount) x returnQty.
+  const refundAmount = refundItems.reduce((s, i) => {
+    const netUnit = Math.max(0, i.price - (Number(i.discount)||0));
+    return s + netUnit * i.returnQty;
+  }, 0);
 
   async function handleSubmit() {
     if (refundItems.length === 0) { setError("Kam az kam ek item select karein."); return; }
@@ -52,7 +57,7 @@ export default function ReturnsPage() {
     try {
       await createReturn({
         saleId: selected.id,
-        items:  refundItems.map(i => ({ id: i.id, name: i.name, qty: i.returnQty, price: i.price })),
+        items:  refundItems.map(i => ({ id: i.id, name: i.name, qty: i.returnQty, price: i.price, discount: Number(i.discount)||0 })),
         reason, refundAmount, refundMethod,
         createdBy: { uid: user?.uid, name: profile?.name || "Unknown" },
       });
@@ -156,17 +161,22 @@ export default function ReturnsPage() {
             {error && <p style={{ fontSize:13, color:"#dc2626", background:"#fee2e2", padding:"8px 12px", borderRadius:8, marginBottom:12 }}>{error}</p>}
 
             <p style={{ fontSize:12, color:"#6b7280", marginBottom:12 }}>Kitni quantity wapas aa rahi hai? (0 = return nahi)</p>
-            {returnItems.map(item=>(
-              <div key={item.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 0", borderBottom:"1px solid #f0f4f2" }}>
-                <div>
-                  <p style={{ fontSize:13, fontWeight:500 }}>{item.name}</p>
-                  <p style={{ fontSize:11, color:"#9ca3af", fontFamily:"monospace" }}>Rs. {item.price} × max {item.qty}</p>
+            {returnItems.map(item=>{
+              const disc = Number(item.discount)||0;
+              return (
+                <div key={item.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 0", borderBottom:"1px solid #f0f4f2" }}>
+                  <div>
+                    <p style={{ fontSize:13, fontWeight:500 }}>{item.name}</p>
+                    <p style={{ fontSize:11, color:"#9ca3af", fontFamily:"monospace" }}>
+                      Rs. {item.price} × max {item.qty}{disc>0 && <span style={{ color:"#dc2626" }}> · disc − Rs.{disc}/unit</span>}
+                    </p>
+                  </div>
+                  <input type="number" min={0} max={item.qty} value={item.returnQty}
+                    onChange={e=>updateQty(item.id, e.target.value)}
+                    style={{ width:64, textAlign:"center", fontSize:14, fontWeight:600, padding:"6px 8px", border:"1px solid #dce6e2", borderRadius:8, outline:"none" }}/>
                 </div>
-                <input type="number" min={0} max={item.qty} value={item.returnQty}
-                  onChange={e=>updateQty(item.id, e.target.value)}
-                  style={{ width:64, textAlign:"center", fontSize:14, fontWeight:600, padding:"6px 8px", border:"1px solid #dce6e2", borderRadius:8, outline:"none" }}/>
-              </div>
-            ))}
+              );
+            })}
 
             <div style={{ marginTop:16 }}>
               <label style={{ display:"block", marginBottom:10 }}>
@@ -197,5 +207,4 @@ export default function ReturnsPage() {
       )}
     </div>
   );
-      }
-                                         
+}
