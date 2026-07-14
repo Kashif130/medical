@@ -59,12 +59,13 @@ export default function Receipt({ bill, storeName = "Umer Din Medical Store", st
             {bill.items.map((i) => {
               const disc    = Number(i.discount||0);
               const netUnit = Math.max(0, i.price - disc);
+              const lineDiscTotal = disc*i.qty;
               return (
                 <tr key={i.id}>
                   <td>{i.name}</td>
                   <td align="center">{i.qty}</td>
                   <td align="right">{i.price}</td>
-                  <td align="right">{disc>0 ? disc.toFixed(0) : "-"}</td>
+                  <td align="right">{disc>0 ? lineDiscTotal.toFixed(0) : "-"}</td>
                   <td align="right">{(netUnit * i.qty).toFixed(0)}</td>
                 </tr>
               );
