@@ -47,7 +47,7 @@ export default function ReportsPage() {
 
       grossRevenue  += revenue;
       totalCost     += cost;
-      totalDiscount += (s.flatDiscount||s.discount||0);
+      totalDiscount += (s.totalDiscount||s.flatDiscount||s.discount||0);
 
       if (!byDay[key]) byDay[key] = { grossRevenue:0, returned:0, netRevenue:0, cost:0, bills:0 };
       byDay[key].grossRevenue += revenue;
