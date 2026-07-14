@@ -7,8 +7,8 @@
  *
  * bill shape:
  * {
- *   id, date, items:[{name,qty,price,costPrice}],
- *   subtotal, flatDiscount, miscCharges, gstAmount, applyGst,
+ *   id, date, items:[{name,qty,price,costPrice,discount}],
+ *   subtotal, totalDiscount, miscCharges, gstAmount, applyGst,
  *   total, customerName, customerPhone, paymentMethod, soldBy
  * }
  */
@@ -19,7 +19,7 @@ import { X, Printer } from "lucide-react";
 // ── Store config — update these ───────────────────────────
 const STORE = {
   name:    "Umer Din Medical Store",
-  address: "Chak No.128/9L",
+  address: "Chak No.128/9L, Near Govt Girls High School",
   phone:   "03116126145",
   ntn:     "XXXX-XXXXXXX",   // National Tax Number
   strn:    "XX-XX-XXXX-XXX-XXXXXX", // Sales Tax Reg No
@@ -58,7 +58,7 @@ export default function FBRReceipt({ bill, onClose }) {
 
   const date         = bill.date instanceof Date ? bill.date : new Date();
   const subtotal     = bill.subtotal     ?? 0;
-  const flatDiscount = bill.flatDiscount ?? 0;
+  const totalDiscount= bill.totalDiscount ?? 0;
   const gstAmount    = bill.gstAmount    ?? 0;
   const miscCharges  = bill.miscCharges  ?? 0;
   const total        = bill.total        ?? 0;
@@ -144,22 +144,26 @@ export default function FBRReceipt({ bill, onClose }) {
             <table style={{ width:"100%", borderCollapse:"collapse", fontSize:10 }}>
               <thead>
                 <tr style={{ borderBottom:"1px solid #333" }}>
-                  <th style={{ textAlign:"left", paddingBottom:3, width:"42%" }}>Description</th>
-                  <th style={{ textAlign:"center", paddingBottom:3, width:"10%" }}>Qty</th>
-                  <th style={{ textAlign:"right", paddingBottom:3, width:"18%" }}>Rate</th>
-                  <th style={{ textAlign:"right", paddingBottom:3, width:"14%" }}>Tax</th>
+                  <th style={{ textAlign:"left", paddingBottom:3, width:"34%" }}>Description</th>
+                  <th style={{ textAlign:"center", paddingBottom:3, width:"8%" }}>Qty</th>
+                  <th style={{ textAlign:"right", paddingBottom:3, width:"15%" }}>Rate</th>
+                  <th style={{ textAlign:"right", paddingBottom:3, width:"15%" }}>Disc</th>
+                  <th style={{ textAlign:"right", paddingBottom:3, width:"12%" }}>Tax</th>
                   <th style={{ textAlign:"right", paddingBottom:3, width:"16%" }}>Amt</th>
                 </tr>
               </thead>
               <tbody>
                 {(bill.items||[]).map((item,i) => {
-                  const lineAmt  = item.price * item.qty;
+                  const disc     = Number(item.discount||0);
+                  const netUnit  = Math.max(0, item.price - disc);
+                  const lineAmt  = netUnit * item.qty;
                   const lineTax  = bill.applyGst ? Math.round(lineAmt * 0.17 / 1.17) : 0;
                   return (
                     <tr key={i} style={{ borderBottom:"1px dotted #ccc" }}>
                       <td style={{ padding:"2px 0", wordBreak:"break-word", lineHeight:1.3 }}>{item.name}</td>
                       <td style={{ textAlign:"center", padding:"2px 0" }}>{item.qty}</td>
                       <td style={{ textAlign:"right", padding:"2px 0" }}>{item.price.toFixed(0)}</td>
+                      <td style={{ textAlign:"right", padding:"2px 0", color: disc>0?"#c1121f":"#999" }}>{disc>0?disc.toFixed(0):"0"}</td>
                       <td style={{ textAlign:"right", padding:"2px 0", color:"#555" }}>{lineTax>0?lineTax.toFixed(0):"0"}</td>
                       <td style={{ textAlign:"right", padding:"2px 0", fontWeight:600 }}>{lineAmt.toFixed(0)}</td>
                     </tr>
@@ -173,7 +177,7 @@ export default function FBRReceipt({ bill, onClose }) {
             {/* Totals */}
             <div style={{ display:"flex", flexDirection:"column", gap:2, fontSize:11 }}>
               <Row2 label="Subtotal"          val={`Rs. ${subtotal.toFixed(0)}`}/>
-              {flatDiscount>0 && <Row2 label="Discount (−)"   val={`Rs. ${flatDiscount.toFixed(0)}`} red/>}
+              {totalDiscount>0 && <Row2 label="Total Discount (−)" val={`Rs. ${totalDiscount.toFixed(0)}`} red/>}
               {gstAmount>0    && <Row2 label="Sales Tax 17%"  val={`Rs. ${gstAmount.toFixed(0)}`}/>}
               {miscCharges>0  && <Row2 label="Misc (+)"       val={`Rs. ${miscCharges.toFixed(0)}`}/>}
             </div>
@@ -255,4 +259,3 @@ function Row2({ label, val, red }) {
     </div>
   );
 }
-  
