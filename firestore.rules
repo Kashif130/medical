@@ -52,13 +52,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    match /practitionerServices/{id} {
+    match /dailyEarnings/{id} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
       allow delete: if isAdmin();
     }
 
-    match /practitionerVisits/{id} {
+    match /dailyExpenses/{id} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn();
       allow delete: if isAdmin();
