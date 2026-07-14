@@ -58,7 +58,9 @@ export default function FBRReceipt({ bill, onClose }) {
 
   const date         = bill.date instanceof Date ? bill.date : new Date();
   const subtotal     = bill.subtotal     ?? 0;
-  const totalDiscount= bill.totalDiscount ?? 0;
+  // Fallback: derive discount from items if bill doesn't carry a saved totalDiscount
+  const itemsDiscount = (bill.items||[]).reduce((s,i)=>s+(Number(i.discount)||0)*(i.qty||0), 0);
+  const totalDiscount = (bill.totalDiscount && bill.totalDiscount > 0) ? bill.totalDiscount : itemsDiscount;
   const gstAmount    = bill.gstAmount    ?? 0;
   const miscCharges  = bill.miscCharges  ?? 0;
   const total        = bill.total        ?? 0;
