@@ -58,10 +58,11 @@ function printReceipt(bill) {
   ${(bill.items||[]).map(i=>{
     const disc = Number(i.discount||0);
     const net  = Math.max(0, i.price - disc);
+    const lineDiscTotal = disc*i.qty;
     return `<div class="itemrow">
       <div class="row"><span class="itemname">${i.name}</span><span>${(net*i.qty).toFixed(0)}</span></div>
-      <div class="itemsub"><span>${i.qty} x Rs.${i.price}${disc>0?` (− Rs.${disc}/unit)`:""}</span><span></span></div>
-      ${disc>0?`<div class="discline">Discount: − Rs. ${(disc*i.qty).toFixed(0)}</div>`:""}
+      <div class="itemsub"><span>${i.qty} x Rs.${i.price}</span><span></span></div>
+      ${disc>0?`<div class="discline">Discount (${i.qty} units): − Rs. ${lineDiscTotal.toFixed(0)}</div>`:""}
     </div>`;
   }).join("")}
   <div class="divider"></div>
@@ -201,7 +202,7 @@ export default function BillingPage() {
       const disc = Number(i.discount||0);
       const net  = Math.max(0, i.price - disc);
       const line = `• ${i.name} x${i.qty} = Rs.${(net*i.qty).toFixed(0)}`;
-      return disc>0 ? `${line} (disc: −Rs.${disc}/unit)` : line;
+      return disc>0 ? `${line} (disc: −Rs.${(disc*i.qty).toFixed(0)})` : line;
     }).join("\n");
     const msg=`🏥 *${STORE_NAME}*\n📍 ${STORE_ADDR}\n\n*Bill Receipt*\nDate: ${bill.date.toLocaleDateString("en-PK")}\nCustomer: ${bill.customerName||"Walk-in"}\n\n${itemLines}\n${bill.totalDiscount>0?`\nTotal Discount: - Rs.${bill.totalDiscount.toFixed(0)}`:""}${bill.gstAmount>0?`\nGST: Rs.${bill.gstAmount.toFixed(0)}`:""}${bill.miscCharges>0?`\nMisc: Rs.${bill.miscCharges.toFixed(0)}`:""}\n\n*Total: Rs.${bill.total.toFixed(0)}*\nPayment: ${bill.paymentMethod}\n\nShukriya! 🙏\n${STORE_PHONE}`;
     const phone=bill.customerPhone.replace(/\D/g,"");
