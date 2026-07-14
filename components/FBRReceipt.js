@@ -159,13 +159,14 @@ export default function FBRReceipt({ bill, onClose }) {
                   const disc     = Number(item.discount||0);
                   const netUnit  = Math.max(0, item.price - disc);
                   const lineAmt  = netUnit * item.qty;
+                  const lineDiscTotal = disc*item.qty;
                   const lineTax  = bill.applyGst ? Math.round(lineAmt * 0.17 / 1.17) : 0;
                   return (
                     <tr key={i} style={{ borderBottom:"1px dotted #ccc" }}>
                       <td style={{ padding:"2px 0", wordBreak:"break-word", lineHeight:1.3 }}>{item.name}</td>
                       <td style={{ textAlign:"center", padding:"2px 0" }}>{item.qty}</td>
                       <td style={{ textAlign:"right", padding:"2px 0" }}>{item.price.toFixed(0)}</td>
-                      <td style={{ textAlign:"right", padding:"2px 0", color: disc>0?"#c1121f":"#999" }}>{disc>0?disc.toFixed(0):"0"}</td>
+                      <td style={{ textAlign:"right", padding:"2px 0", color: disc>0?"#c1121f":"#999" }}>{disc>0?lineDiscTotal.toFixed(0):"0"}</td>
                       <td style={{ textAlign:"right", padding:"2px 0", color:"#555" }}>{lineTax>0?lineTax.toFixed(0):"0"}</td>
                       <td style={{ textAlign:"right", padding:"2px 0", fontWeight:600 }}>{lineAmt.toFixed(0)}</td>
                     </tr>
