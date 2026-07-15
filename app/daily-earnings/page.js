@@ -5,7 +5,6 @@ import { useAuth } from "@/context/AuthContext";
 import {
   watchDailyEarnings, upsertDailyEarning, deleteDailyEarning,
   watchDailyExpenses, addDailyExpense, deleteDailyExpense,
-  watchSalesForCost, watchReturns,
 } from "@/lib/firebase";
 import { Wallet, Save, Trash2, Pencil, X, Receipt, Plus } from "lucide-react";
 
@@ -34,8 +33,6 @@ export default function DailyEarningsPage() {
   const { profile, isAdmin } = useAuth();
   const [entries, setEntries]   = useState([]);
   const [expenses, setExpenses] = useState([]);
-  const [salesCost, setSalesCost] = useState([]); // [{id, dateKey, cost}]
-  const [returns, setReturns]   = useState([]);   // customer refunds, subtracted from Daraz earning
 
   // Earning form state
   const [amount, setAmount]     = useState("");
@@ -54,8 +51,6 @@ export default function DailyEarningsPage() {
 
   useEffect(() => watchDailyEarnings(setEntries), []);
   useEffect(() => watchDailyExpenses(setExpenses), []);
-  useEffect(() => watchSalesForCost(setSalesCost), []);
-  useEffect(() => watchReturns(setReturns), []);
 
   const existingForDate = entries.find(e => e.dateKey === dateKey);
 
@@ -118,24 +113,13 @@ export default function DailyEarningsPage() {
     }
   }
 
-  // ── Combine earnings + medicine cost + expenses by date ──
+  // ── Combine earnings + expenses by date (no medicine cost / returns deduction) ──
   function computeForRange(fromKey) {
-    const earnRaw = entries.filter(e => e.dateKey >= fromKey).reduce((s,e)=>s+(e.total||0),0);
-    const medCost = salesCost.filter(s => s.dateKey && s.dateKey >= fromKey).reduce((s,e)=>s+(e.cost||0),0);
+    const earn = entries.filter(e => e.dateKey >= fromKey).reduce((s,e)=>s+(e.total||0),0);
     const exp  = expenses.filter(e => e.dateKey >= fromKey).reduce((s,e)=>s+(e.amount||0),0);
-    const returned = returns
-      .filter(r => {
-        const dt = r.createdAt?.toDate ? r.createdAt.toDate() : null;
-        const key = dt ? dt.toISOString().slice(0,10) : null;
-        return key && key >= fromKey;
-      })
-      .reduce((s,r)=>s+(r.refundAmount||0),0);
-    const earn = earnRaw - returned;
-    const profit = earn - medCost;
+    const profit = earn;
     return {
       earning: earn,
-      returned,
-      medCost,
       profit,
       profitA: profit*0.70, profitB: profit*0.30,
       expense: exp,
@@ -148,7 +132,7 @@ export default function DailyEarningsPage() {
     week:  computeForRange(startOfWeekKey()),
     month: computeForRange(startOfMonthKey()),
     year:  computeForRange(startOfYearKey()),
-  }), [entries, expenses, salesCost, returns]);
+  }), [entries, expenses]);
 
   const expensesForDate = expenses.filter(e => e.dateKey === expDate);
   const expTotalForDate = expensesForDate.reduce((s,e)=>s+(e.amount||0),0);
@@ -160,7 +144,7 @@ export default function DailyEarningsPage() {
           <Wallet size={18} color="#0e6e5c"/> Daily Earnings
         </h1>
         <p style={{ fontSize:13, color:"#6b7280", marginTop:4 }}>
-          Daraz ki total earning add karein — medicine cost POS se automatic aayegi, returns (refunds) bhi earning se minus honge, profit (Earning − Returns − Medicine Cost) {PARTNER_A_LABEL} / {PARTNER_B_LABEL} mein divide hoga. Kharcha alag se 50/50 dikhega.
+          Daraz ki total earning add karein — profit seedha Earning hoga (koi medicine cost ya return deduction nahi), {PARTNER_A_LABEL} / {PARTNER_B_LABEL} mein divide hoga. Kharcha alag se 50/50 dikhega.
         </p>
       </div>
 
@@ -330,10 +314,6 @@ function SummaryCard({ title, data }) {
       <p style={{ fontSize:11, fontFamily:"monospace", color:"#9ca3af", textTransform:"uppercase", marginBottom:6 }}>{title}</p>
 
       <div style={{ fontSize:12, color:"#374151", marginBottom:2 }}>Earning: <b>Rs. {data.earning.toFixed(0)}</b></div>
-      {data.returned > 0 && (
-        <div style={{ fontSize:11.5, color:"#dc2626", marginBottom:2 }}>(incl. − Rs. {data.returned.toFixed(0)} returns)</div>
-      )}
-      <div style={{ fontSize:12, color:"#b45309", marginBottom:2 }}>Medicine Cost: <b>− Rs. {data.medCost.toFixed(0)}</b></div>
 
       <p style={{ fontSize:19, fontWeight:800, color:"#0e6e5c", marginTop:6, marginBottom:4 }}>Profit: Rs. {data.profit.toFixed(0)}</p>
       <div style={{ fontSize:11.5, color:"#6b7280", lineHeight:1.6, marginBottom:8 }}>
