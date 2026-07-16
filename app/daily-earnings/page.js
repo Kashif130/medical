@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   watchDailyEarnings, upsertDailyEarning, deleteDailyEarning,
   watchDailyExpenses, addDailyExpense, deleteDailyExpense,
+  watchSalesForCost, watchReturnsForRefund,
 } from "@/lib/firebase";
 import { Wallet, Save, Trash2, Pencil, X, Receipt, Plus } from "lucide-react";
 
@@ -31,8 +32,10 @@ function startOfYearKey() {
 
 export default function DailyEarningsPage() {
   const { profile, isAdmin } = useAuth();
-  const [entries, setEntries]   = useState([]);
-  const [expenses, setExpenses] = useState([]);
+  const [entries, setEntries]     = useState([]);
+  const [expenses, setExpenses]   = useState([]);
+  const [salesCost, setSalesCost] = useState([]); // [{id, dateKey, cost}] — sales positive, returns negative (net medicine cost)
+  const [refunds, setRefunds]     = useState([]); // [{id, dateKey, refundAmount}] — money given back on returns
 
   // Earning form state
   const [amount, setAmount]     = useState("");
@@ -51,6 +54,8 @@ export default function DailyEarningsPage() {
 
   useEffect(() => watchDailyEarnings(setEntries), []);
   useEffect(() => watchDailyExpenses(setExpenses), []);
+  useEffect(() => watchSalesForCost(setSalesCost), []);
+  useEffect(() => watchReturnsForRefund(setRefunds), []);
 
   const existingForDate = entries.find(e => e.dateKey === dateKey);
 
@@ -113,17 +118,25 @@ export default function DailyEarningsPage() {
     }
   }
 
-  // ── Combine earnings + expenses by date ──
+  // ── Combine earnings + returns + medicine cost + expenses by date ──
   function computeForRange(fromKey) {
-    const earn = entries.filter(e => e.dateKey >= fromKey).reduce((s,e)=>s+(e.total||0),0);
-    const exp  = expenses.filter(e => e.dateKey >= fromKey).reduce((s,e)=>s+(e.amount||0),0);
-    const profit = earn;
+    const earning = entries.filter(e => e.dateKey >= fromKey).reduce((s,e)=>s+(e.total||0),0);
+    const refundTotal = refunds.filter(r => r.dateKey && r.dateKey >= fromKey).reduce((s,r)=>s+(r.refundAmount||0),0);
+    const netSale = earning - refundTotal;
+
+    // medCost is already net of returns (watchSalesForCost subtracts returned items' cost)
+    const medCost = salesCost.filter(s => s.dateKey && s.dateKey >= fromKey).reduce((s,e)=>s+(e.cost||0),0);
+
+    const exp = expenses.filter(e => e.dateKey >= fromKey).reduce((s,e)=>s+(e.amount||0),0);
+
+    const netProfit = netSale - medCost - exp;
+
     return {
-      earning: earn,
-      profit,
-      profitA: profit*0.70, profitB: profit*0.30,
-      expense: exp,
+      earning, refundTotal, netSale,
+      medCost, exp,
       expenseA: exp*0.5, expenseB: exp*0.5,
+      netProfit,
+      profitA: netProfit*0.70, profitB: netProfit*0.30,
     };
   }
 
@@ -132,19 +145,19 @@ export default function DailyEarningsPage() {
     week:  computeForRange(startOfWeekKey()),
     month: computeForRange(startOfMonthKey()),
     year:  computeForRange(startOfYearKey()),
-  }), [entries, expenses]);
+  }), [entries, expenses, salesCost, refunds]);
 
   const expensesForDate = expenses.filter(e => e.dateKey === expDate);
   const expTotalForDate = expensesForDate.reduce((s,e)=>s+(e.amount||0),0);
 
   return (
-    <div style={{ padding:32, maxWidth:900 }}>
+    <div style={{ padding:32, maxWidth:920 }}>
       <div style={{ marginBottom:24 }}>
         <h1 style={{ fontSize:18, fontWeight:700, display:"flex", alignItems:"center", gap:8 }}>
           <Wallet size={18} color="#0e6e5c"/> Daily Earnings
         </h1>
         <p style={{ fontSize:13, color:"#6b7280", marginTop:4 }}>
-          Daraz ki total earning add karein — profit (Earning) {PARTNER_A_LABEL} / {PARTNER_B_LABEL} mein divide hoga. Kharcha alag se 50/50 dikhega.
+          Daraz ki total earning add karein. Return refunds, medicine cost (sales History se, returns netted out) aur kharcha automatic minus ho kar Net Profit banega — {PARTNER_A_LABEL} / {PARTNER_B_LABEL} mein divide hoga.
         </p>
       </div>
 
@@ -227,7 +240,7 @@ export default function DailyEarningsPage() {
       </div>
 
       {/* Summary cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(210px,1fr))", gap:12, marginBottom:28 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(230px,1fr))", gap:12, marginBottom:28 }}>
         <SummaryCard title="Today"      data={totals.today}/>
         <SummaryCard title="This Week"  data={totals.week}/>
         <SummaryCard title="This Month" data={totals.month}/>
@@ -314,15 +327,21 @@ function SummaryCard({ title, data }) {
       <p style={{ fontSize:11, fontFamily:"monospace", color:"#9ca3af", textTransform:"uppercase", marginBottom:6 }}>{title}</p>
 
       <div style={{ fontSize:12, color:"#374151", marginBottom:2 }}>Earning: <b>Rs. {data.earning.toFixed(0)}</b></div>
+      {data.refundTotal > 0 && (
+        <div style={{ fontSize:12, color:"#dc2626", marginBottom:2 }}>Return Refunds: <b>− Rs. {data.refundTotal.toFixed(0)}</b></div>
+      )}
+      <div style={{ fontSize:12.5, color:"#374151", fontWeight:700, marginBottom:6 }}>Net Sale: Rs. {data.netSale.toFixed(0)}</div>
 
-      <p style={{ fontSize:19, fontWeight:800, color:"#0e6e5c", marginTop:6, marginBottom:4 }}>Profit: Rs. {data.profit.toFixed(0)}</p>
+      <div style={{ fontSize:12, color:"#b45309", marginBottom:2 }}>Medicine Cost: <b>− Rs. {data.medCost.toFixed(0)}</b></div>
+      <div style={{ fontSize:12, color:"#dc2626", marginBottom:6 }}>Kharcha: <b>− Rs. {data.exp.toFixed(0)}</b></div>
+
+      <p style={{ fontSize:19, fontWeight:800, color:"#0e6e5c", marginTop:6, marginBottom:4 }}>Net Profit: Rs. {data.netProfit.toFixed(0)}</p>
       <div style={{ fontSize:11.5, color:"#6b7280", lineHeight:1.6, marginBottom:8 }}>
         <div>A share (70%): <b style={{ color:"#0e6e5c" }}>Rs. {data.profitA.toFixed(0)}</b></div>
         <div>B share (30%): <b style={{ color:"#0e6e5c" }}>Rs. {data.profitB.toFixed(0)}</b></div>
       </div>
 
       <div style={{ fontSize:11.5, color:"#6b7280", lineHeight:1.6, borderTop:"1px dashed #e5e7eb", paddingTop:6 }}>
-        <div>Kharcha (total): <b style={{ color:"#dc2626" }}>− Rs. {data.expense.toFixed(0)}</b></div>
         <div>Kharcha A (50%): <b style={{ color:"#dc2626" }}>− Rs. {data.expenseA.toFixed(0)}</b></div>
         <div>Kharcha B (50%): <b style={{ color:"#dc2626" }}>− Rs. {data.expenseB.toFixed(0)}</b></div>
       </div>
